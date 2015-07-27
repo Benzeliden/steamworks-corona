@@ -12,6 +12,7 @@
 #include "steam_api.h"
 
 #include <inttypes.h>
+#include <sstream>
 // ----------------------------------------------------------------------------
 
 class SteamworksProvider
@@ -52,34 +53,39 @@ public:
     static int request(lua_State *L);
     
 private:
+    const char* steamIDToString(CSteamID id);
+    CSteamID stringToSteamID(const char* stringID);
+    static int runCallbacks(lua_State *L);
+    
+private:
     CoronaLuaRef fListener;
-    lua_State *_L;
+    lua_State *fL;
     
 public:
-    STEAM_CALLBACK( SteamworksProvider, OnUserStatsReceived, UserStatsReceived_t, m_CallbackUserStatsReceived );
-    STEAM_CALLBACK( SteamworksProvider, OnUserStatsStored, UserStatsStored_t, m_CallbackUserStatsStored );
-    STEAM_CALLBACK( SteamworksProvider, OnUserAchievementStored, UserAchievementStored_t, m_CallbackUserAchievementStored );
-    STEAM_CALLBACK( SteamworksProvider, OnUserStatsUnloaded, UserStatsUnloaded_t, m_CallbackUserStatsUnloaded );
-    STEAM_CALLBACK( SteamworksProvider, OnUserAchievementIconFetched, UserAchievementIconFetched_t, m_CallbackUserAchievementIconFetched );
-    STEAM_CALLBACK( SteamworksProvider, OnLeaderboardUGCSet, LeaderboardUGCSet_t, m_CallbackLeaderboardUGCSet );
+    STEAM_CALLBACK( SteamworksProvider, OnUserStatsReceived, UserStatsReceived_t, fCallbackUserStatsReceived );
+    STEAM_CALLBACK( SteamworksProvider, OnUserStatsStored, UserStatsStored_t, fCallbackUserStatsStored );
+    STEAM_CALLBACK( SteamworksProvider, OnUserAchievementStored, UserAchievementStored_t, fCallbackUserAchievementStored );
+    STEAM_CALLBACK( SteamworksProvider, OnUserStatsUnloaded, UserStatsUnloaded_t, fCallbackUserStatsUnloaded );
+    STEAM_CALLBACK( SteamworksProvider, OnUserAchievementIconFetched, UserAchievementIconFetched_t, fCallbackUserAchievementIconFetched );
+    STEAM_CALLBACK( SteamworksProvider, OnLeaderboardUGCSet, LeaderboardUGCSet_t, fCallbackLeaderboardUGCSet );
     
     void OnLeaderboardFindResult( LeaderboardFindResult_t *pResult, bool bIOFailure );
-    CCallResult<SteamworksProvider, LeaderboardFindResult_t> m_callResultFindLeaderboard;
+    CCallResult<SteamworksProvider, LeaderboardFindResult_t> fcallResultFindLeaderboard;
     
     void OnLeaderboardScoresDownloaded( LeaderboardScoresDownloaded_t *pResult, bool bIOFailure );
-    CCallResult<SteamworksProvider, LeaderboardScoresDownloaded_t> m_callResultDownloadedLeaderboardScores;
+    CCallResult<SteamworksProvider, LeaderboardScoresDownloaded_t> fcallResultDownloadedLeaderboardScores;
     
     void OnLeaderboardScoreUploaded( LeaderboardScoreUploaded_t *pResult, bool bIOFailure );
-    CCallResult<SteamworksProvider, LeaderboardScoreUploaded_t> m_callResultUploadedLeaderboardScore;
+    CCallResult<SteamworksProvider, LeaderboardScoreUploaded_t> fcallResultUploadedLeaderboardScore;
     
     void OnNumberOfCurrentPlayers( NumberOfCurrentPlayers_t *pResult, bool bIOFailure );
-    CCallResult<SteamworksProvider, NumberOfCurrentPlayers_t> m_callResultNumberOfCurrentPlayers;
+    CCallResult<SteamworksProvider, NumberOfCurrentPlayers_t> fcallResultNumberOfCurrentPlayers;
     
     void OnGlobalStatsReceived( GlobalStatsReceived_t *pResult, bool bIOFailure );
-    CCallResult<SteamworksProvider, GlobalStatsReceived_t> m_callResultReceivedGlobalStats;
+    CCallResult<SteamworksProvider, GlobalStatsReceived_t> fcallResultReceivedGlobalStats;
 
     void OnGlobalAchievementPercentagesReady( GlobalAchievementPercentagesReady_t *pResult, bool bIOFailure );
-    CCallResult<SteamworksProvider, GlobalAchievementPercentagesReady_t> m_callResultGlobalAchievementPercentagesReady;
+    CCallResult<SteamworksProvider, GlobalAchievementPercentagesReady_t> fcallResultGlobalAchievementPercentagesReady;
 };
 
 // ----------------------------------------------------------------------------
@@ -92,16 +98,18 @@ const char SteamworksProvider::kEventName[] = "steamworksEvent";
 
 static const char kPublisherId[] = "com.coronalabs";
 
+static int callbackRef = 0;
+
 SteamworksProvider::SteamworksProvider( lua_State *L )
 :
 fListener( NULL ),
-_L( L ),
-m_CallbackUserStatsReceived(this, &SteamworksProvider::OnUserStatsReceived),
-m_CallbackUserStatsStored(this, &SteamworksProvider::OnUserStatsStored),
-m_CallbackUserAchievementStored(this, &SteamworksProvider::OnUserAchievementStored),
-m_CallbackUserStatsUnloaded(this, &SteamworksProvider::OnUserStatsUnloaded),
-m_CallbackUserAchievementIconFetched(this, &SteamworksProvider::OnUserAchievementIconFetched),
-m_CallbackLeaderboardUGCSet(this, &SteamworksProvider::OnLeaderboardUGCSet)
+fL( L ),
+fCallbackUserStatsReceived(this, &SteamworksProvider::OnUserStatsReceived),
+fCallbackUserStatsStored(this, &SteamworksProvider::OnUserStatsStored),
+fCallbackUserAchievementStored(this, &SteamworksProvider::OnUserAchievementStored),
+fCallbackUserStatsUnloaded(this, &SteamworksProvider::OnUserStatsUnloaded),
+fCallbackUserAchievementIconFetched(this, &SteamworksProvider::OnUserAchievementIconFetched),
+fCallbackLeaderboardUGCSet(this, &SteamworksProvider::OnLeaderboardUGCSet)
 {
 }
 
@@ -144,6 +152,22 @@ SteamworksProvider::Finalizer( lua_State *L )
 {
     Self *library = (Self *)CoronaLuaToUserdata( L, 1 );
     
+    CoronaLuaPushRuntime( L ); // push 'Runtime'
+    
+    if ( lua_type( L, -1 ) == LUA_TTABLE )
+    {
+        lua_getfield( L, -1, "removeEventListener" ); // push 'f', i.e. Runtime.addEventListener
+        lua_insert( L, -2 ); // swap so 'f' is below 'Runtime'
+        lua_pushstring( L, "enterFrame" );
+        lua_rawgeti( L, LUA_REGISTRYINDEX, callbackRef );// pushes closure
+        CoronaLuaDoCall( L, 3, 0 );
+        luaL_unref(L, LUA_REGISTRYINDEX,  callbackRef);
+    }
+    else
+    {
+        lua_pop( L, 1 ); // pop nil
+    }
+    
     CoronaLuaDeleteRef( L, library->GetListener() );
     
     delete library;
@@ -162,15 +186,15 @@ SteamworksProvider::ToLibrary( lua_State *L )
 void
 SteamworksProvider::Dispatch( bool isError )
 {
-    if ( CORONA_VERIFY( fListener ) && CORONA_VERIFY( _L ))
+    if ( CORONA_VERIFY( fListener ) && CORONA_VERIFY( fL ))
     {
-        lua_pushstring( _L, kProviderName );
-        lua_setfield( _L, -2, "provider" );
+        lua_pushstring( fL, kProviderName );
+        lua_setfield( fL, -2, "provider" );
         
-        lua_pushboolean( _L, isError );
-        lua_setfield( _L, -2, "isError" );
+        lua_pushboolean( fL, isError );
+        lua_setfield( fL, -2, "isError" );
         
-        CoronaLuaDispatchEvent( _L, fListener, 0 );
+        CoronaLuaDispatchEvent( fL, fListener, 0 );
     }
 }
 
@@ -178,7 +202,6 @@ int
 SteamworksProvider::Init(lua_State *L)
 {    
     CORONA_ASSERT( 0 == strcmp( kProviderName == lua_tostring( L, 1 ) ) );
-    
     bool result = false;
     if ( !fListener )
     {
@@ -189,6 +212,20 @@ SteamworksProvider::Init(lua_State *L)
             if (result){
                 CoronaLuaRef listener = CoronaLuaNewRef( L, index );
                 fListener = listener;
+                
+                //Runtime:addEventListener( "enterFrame", runCallbacks )
+                CoronaLuaPushRuntime( L );
+                lua_getfield( L, -1, "addEventListener" );
+                lua_insert( L, -2 );
+                lua_pushstring( L, "enterFrame" );
+                
+                lua_pushlightuserdata( L, ToLibrary(L) );
+                lua_pushcclosure( L, &runCallbacks, 1 );
+                
+                lua_pushvalue( L, -1 );
+                callbackRef = luaL_ref( L, LUA_REGISTRYINDEX );
+                CoronaLuaDoCall( L, 3, 0 );
+                
             }else{
                 CoronaLuaWarning(L, "steamAPI failed to initialize");
             }
@@ -243,6 +280,31 @@ void stackdump_g(lua_State* l)
     CoronaLog("\n");  /* end the listing */
 }
 
+const char*
+SteamworksProvider::steamIDToString(CSteamID id)
+{
+    static char stringID[32];
+    uint64 intID = id.ConvertToUint64();
+    _snprintf(stringID, 32, "%llu", intID);
+    return stringID;
+}
+
+CSteamID
+SteamworksProvider::stringToSteamID(const char* stringID)
+{
+    std::stringstream strValue;
+    strValue << stringID;
+    uint64 intID;
+    strValue >> intID;
+    return CSteamID(intID);
+}
+
+int
+SteamworksProvider::runCallbacks(lua_State *L)
+{
+    SteamAPI_RunCallbacks();
+    return 0;
+}
 
 int
 SteamworksProvider::Request(lua_State *L)
@@ -254,7 +316,7 @@ SteamworksProvider::Request(lua_State *L)
     }
     const char *command = lua_tostring(L, 1);
     
-    if ( !fListener && 0 != strcmp(command, "isSteamRunning") && 0 != strcmp(command, "restartAppIfNecessary") && 0 != strcmp(command, "runCallbacks") )
+    if ( !fListener && 0 != strcmp(command, "isSteamRunning") && 0 != strcmp(command, "restartAppIfNecessary"))
     {
         CoronaLuaWarning(L, "Steam API is not initialized. Call gameNetwork.init()\n");
         return 0;
@@ -275,7 +337,7 @@ SteamworksProvider::Request(lua_State *L)
         int appID;
         if (options){
             lua_getfield(L, -1, "appID");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 appID = lua_tonumber(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -283,7 +345,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"restartAppIfNecessary\", params): Specify appID in params table.");
                 return 0;
             }
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             appID = lua_tonumber(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"restartAppIfNecessary\", params): Specify appID in params table.");
@@ -292,25 +354,21 @@ SteamworksProvider::Request(lua_State *L)
         lua_pushboolean(L, SteamAPI_RestartAppIfNecessary(appID));
         result = 1;
     }
-    //gameNetwork.request("runCallbacks")
-    else if (0 == strcmp(command, "runCallbacks")){
-        SteamAPI_RunCallbacks();
-    }
     //gameNetwork.request("requestStats")
-    //gameNetwork.request("requestStats", {user = 123456789})
+    //gameNetwork.request("requestStats", {user = "123456789"})
     else if (0 == strcmp(command, "requestStats")){
-        uint64 user = NULL;
+        const char *user = NULL;
         if (options){
             lua_getfield(L, -1, "user");
-            if (!lua_isnil(L, -1)){
-                user = lua_tonumber(L, -1);
+            if (lua_type(L, -1) == LUA_TSTRING){
+                user = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
-        }else if (lua_isnumber(L, 2)){
-            user = lua_tonumber(L, 2);
+        }else if (lua_type(L, 2) == LUA_TSTRING){
+            user = lua_tostring(L, 2);
         }
         if (user){
-            lua_pushboolean(L, SteamUserStats()->RequestUserStats(CSteamID(user))? 1 : 0);
+            lua_pushboolean(L, SteamUserStats()->RequestUserStats(stringToSteamID(user))? 1 : 0);
         }else{
             lua_pushboolean(L, SteamUserStats()->RequestCurrentStats()? 1 : 0);
         }
@@ -322,23 +380,23 @@ SteamworksProvider::Request(lua_State *L)
         result = 1;
     }
     //gameNetwork.request("getStat", {name = "name"})
-    //gameNetwork.request("getStat", {name = "name", user = 123456789})
+    //gameNetwork.request("getStat", {name = "name", user = "123456789"})
     else if (0 == strcmp(command, "getStat")){
         const char *name = NULL;
-        uint64 user = NULL;
+        const char *user = NULL;
         float data = 0.0;
         if (options){
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             lua_getfield(L, -1, "user");
-            if (!lua_isnil(L, -1)){
-                user = lua_tonumber(L, -1);
+            if (lua_type(L, -1) == LUA_TSTRING){
+                user = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
-        }else if (lua_isstring(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TSTRING){
             name = lua_tostring(L, 2);
         }
         if (!name){
@@ -347,7 +405,7 @@ SteamworksProvider::Request(lua_State *L)
         }
         bool success;
         if (user){
-            success = SteamUserStats()->GetUserStat(CSteamID(user), name, &data);
+            success = SteamUserStats()->GetUserStat(stringToSteamID(user), name, &data);
         }else{
             success = SteamUserStats()->GetStat(name, &data);
         }
@@ -370,26 +428,29 @@ SteamworksProvider::Request(lua_State *L)
         const char *type = "";
         double time = NULL;
         lua_getfield(L, -1, "name");
-        if (!lua_isnil(L, -1)){
+        if (lua_type(L, -1) == LUA_TSTRING){
             name = lua_tostring(L, -1);
         }
         lua_pop(L, 1);
         lua_getfield(L, -1, "data");
-        if (!lua_isnil(L, -1)){
+        if (lua_type(L, -1) == LUA_TNUMBER){
             data = lua_tonumber(L, -1);
+        }else{
+            CoronaLuaError(L, "gameNetwork.request(\"setStat\", params): Specify name and data in params table.");
+            return 0;
         }
         lua_pop(L, 1);
         lua_getfield(L, -1, "type");
-        if (!lua_isnil(L, -1)){
+        if (lua_type(L, -1) == LUA_TSTRING){
             type = lua_tostring(L, -1);
         }
         lua_pop(L, 1);
         lua_getfield(L, -1, "time");
-        if (!lua_isnil(L, -1)){
+        if (lua_type(L, -1) == LUA_TNUMBER){
             time = lua_tonumber(L, -1);
         }
         lua_pop(L, 1);
-        if (!name || !data){
+        if (!name){
             CoronaLuaError(L, "gameNetwork.request(\"setStat\", params): Specify name and data in params table.");
             return 0;
         }
@@ -403,23 +464,23 @@ SteamworksProvider::Request(lua_State *L)
         
     }
     //gameNetwork.request("getAchievement", {name = "name"})
-    //gameNetwork.request("getAchievement", {name = "name", user = 1234567890})
+    //gameNetwork.request("getAchievement", {name = "name", user = "1234567890"})
     else if (0 == strcmp(command, "getAchievement")){
         const char *name = NULL;
-        uint64 user = NULL;
+        const char *user = NULL;
         bool achieved = false;
         if (options){
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             lua_getfield(L, -1, "user");
-            if (!lua_isnil(L, -1)){
-                user = lua_tonumber(L, -1);
+            if (lua_type(L, -1) == LUA_TSTRING){
+                user = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
-        }else if (lua_isstring(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TSTRING){
             name = lua_tostring(L, 2);
         }
         if (!name){
@@ -428,7 +489,7 @@ SteamworksProvider::Request(lua_State *L)
         }
         bool success;
         if (user){
-            success = SteamUserStats()->GetUserAchievement(CSteamID(user), name, &achieved);
+            success = SteamUserStats()->GetUserAchievement(stringToSteamID(user), name, &achieved);
         }else{
             success = SteamUserStats()->GetAchievement(name, &achieved);
         }
@@ -442,7 +503,7 @@ SteamworksProvider::Request(lua_State *L)
         
     }
     //gameNetwork.request("getAchievementProperty", {name = "name", type = "unlockTime"})
-    //gameNetwork.request("getAchievementProperty", {name = "name", type = "unlockTime", user = 1234567890})
+    //gameNetwork.request("getAchievementProperty", {name = "name", type = "unlockTime", user = "1234567890"})
     //gameNetwork.request("getAchievementProperty", {name = "name", type = "icon"})
     //gameNetwork.request("getAchievementProperty", {name = "name", type = "name"})
     //gameNetwork.request("getAchievementProperty", {name = "name", type = "desc"})
@@ -454,20 +515,20 @@ SteamworksProvider::Request(lua_State *L)
         }
         const char *name = NULL;
         const char *type = "";
-        uint64 user = NULL;
+        const char *user = NULL;
         lua_getfield(L, -1, "name");
-        if (!lua_isnil(L, -1)){
+        if (lua_type(L, -1) == LUA_TSTRING){
             name = lua_tostring(L, -1);
         }
         lua_pop(L, 1);
         lua_getfield(L, -1, "type");
-        if (!lua_isnil(L, -1)){
+        if (lua_type(L, -1) == LUA_TSTRING){
             type = lua_tostring(L, -1);
         }
         lua_pop(L, 1);
         lua_getfield(L, -1, "user");
-        if (!lua_isnil(L, -1)){
-            user = lua_tonumber(L, -1);
+        if (lua_type(L, -1) == LUA_TSTRING){
+            user = lua_tostring(L, -1);
         }
         lua_pop(L, 1);
         
@@ -476,33 +537,30 @@ SteamworksProvider::Request(lua_State *L)
             return 0;
         }
 
-        // TODO: Unlock time table
         if (0 == strcmp(type, "unlockTime") && user){
             bool achieved = false;
             uint32 unlockTime = 0;
-            bool success = SteamUserStats()->GetUserAchievementAndUnlockTime(CSteamID(user), name, &achieved, &unlockTime);
-            if (achieved){
-                lua_pushnumber(L, unlockTime);
-                result = 1;
-            }else if(success){
-                lua_pushboolean(L, achieved? 1 : 0);
-                result = 1;
-            }else{
-                result = 0;
-            }
+            bool success = SteamUserStats()->GetUserAchievementAndUnlockTime(stringToSteamID(user), name, &achieved, &unlockTime);
+            lua_newtable(L);
+            lua_pushnumber( L, unlockTime );
+            lua_setfield( L, -2, "unlockTime" );
+            lua_pushboolean( L, achieved? 1 : 0 );
+            lua_setfield( L, -2, "achieved" );
+            lua_pushboolean( L, success? 0 : 1 );
+            lua_setfield( L, -2, "isError" );
+            result = 1;
         }else if (0 == strcmp(type, "unlockTime")){
             bool achieved = false;
             uint32 unlockTime = 0;
             bool success = SteamUserStats()->GetAchievementAndUnlockTime(name, &achieved, &unlockTime);
-            if (achieved){
-                lua_pushnumber(L, unlockTime);
-                result = 1;
-            }else if(success){
-                lua_pushboolean(L, achieved? 1 : 0);
-                result = 1;
-            }else{
-                result = 0;
-            }
+            lua_newtable(L);
+            lua_pushnumber( L, unlockTime );
+            lua_setfield( L, -2, "unlockTime" );
+            lua_pushboolean( L, achieved? 1 : 0 );
+            lua_setfield( L, -2, "achieved" );
+            lua_pushboolean( L, success? 0 : 1 );
+            lua_setfield( L, -2, "isError" );
+            result = 1;
         }else if (0 == strcmp(type, "icon")){
             //TODO
             int icon = SteamUserStats()->GetAchievementIcon(name);
@@ -521,7 +579,7 @@ SteamworksProvider::Request(lua_State *L)
     //gameNetwork.request("setAchievement", {name = "name"})
     //gameNetwork.request("setAchievement", {name = "name", type = "progress", currProgress = 75, maxProgress = 100})
     else if (0 == strcmp(command, "setAchievement")){
-        if (!options && (lua_isstring(L, 2))){
+        if (!options && (lua_type(L, 2) == LUA_TSTRING)){
             lua_pushboolean(L, SteamUserStats()->SetAchievement(lua_tostring(L, 2))? 1 : 0);
         }else if(!options){
             CoronaLuaError(L, "gameNetwork.request(\"setAchievement\", params): Specify name in params table.");
@@ -533,22 +591,22 @@ SteamworksProvider::Request(lua_State *L)
             uint32 maxProgress = NULL;
             
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             lua_getfield(L, -1, "type");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 type = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             lua_getfield(L, -1, "currProgress");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 currProgress = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
             lua_getfield(L, -1, "maxProgress");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 maxProgress = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
@@ -570,7 +628,7 @@ SteamworksProvider::Request(lua_State *L)
         const char *name;
         if (options){
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -578,7 +636,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"clearAchievement\", params): Specify name in params table.");
                 return 0;
             }
-        }else if (lua_isstring(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TSTRING){
             name = lua_tostring(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"clearAchievement\", params): Specify name in params table.");
@@ -598,7 +656,7 @@ SteamworksProvider::Request(lua_State *L)
         int i;
         if (options){
             lua_getfield(L, -1, "i");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 i = lua_tonumber(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -606,7 +664,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"getAchievementName\", params): Specify i in params table.");
                 return 0;
             }
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             i = lua_tonumber(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"getAchievementName\", params): Specify i in params table.");
@@ -620,11 +678,11 @@ SteamworksProvider::Request(lua_State *L)
         bool resetAchievements = false;
         if (options){
             lua_getfield(L, -1, "resetAchievements");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TBOOLEAN){
                 resetAchievements = lua_toboolean(L, -1)? true : false;
             }
             lua_pop(L, 1);
-        }else if (lua_isboolean(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TBOOLEAN){
             resetAchievements = lua_toboolean(L, 2)? true : false;
         }
         lua_pushboolean(L, SteamUserStats()->ResetAllStats(resetAchievements)? 1 : 0);
@@ -632,9 +690,9 @@ SteamworksProvider::Request(lua_State *L)
     }
     //gameNetwork.request("findOrCreateLeaderboard", {name = "Quickest Win", sortMethod = "ascending", displayType = "numeric"})
     else if (0 == strcmp(command, "findOrCreateLeaderboard")){
-        if (!options && (lua_isstring(L, 2))){
+        if (!options && (lua_type(L, 2) == LUA_TSTRING)){
             SteamAPICall_t hSteamAPICall = SteamUserStats()->FindOrCreateLeaderboard( lua_tostring(L, 2), k_ELeaderboardSortMethodNone, k_ELeaderboardDisplayTypeNone );
-            m_callResultFindLeaderboard.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardFindResult );
+            fcallResultFindLeaderboard.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardFindResult );
             lua_pushboolean(L, hSteamAPICall ? 1 : 0);
         }else if(!options){
             CoronaLuaError(L, "gameNetwork.request(\"findOrCreateLeaderboard\", params): Specify name in params table.");
@@ -647,19 +705,19 @@ SteamworksProvider::Request(lua_State *L)
             ELeaderboardDisplayType leaderboardDisplayType = k_ELeaderboardDisplayTypeNone;
             
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "sortMethod");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 sortMethod = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "displayType");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 displayType = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
@@ -682,7 +740,7 @@ SteamworksProvider::Request(lua_State *L)
                 leaderboardDisplayType = k_ELeaderboardDisplayTypeTimeMilliSeconds;
             }
             SteamAPICall_t hSteamAPICall = SteamUserStats()->FindOrCreateLeaderboard( name, leaderboardSortMethod, leaderboardDisplayType );
-            m_callResultFindLeaderboard.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardFindResult );
+            fcallResultFindLeaderboard.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardFindResult );
             
             lua_pushboolean(L, hSteamAPICall? 1 : 0);
             result = 1;
@@ -694,7 +752,7 @@ SteamworksProvider::Request(lua_State *L)
         const char *name;
         if (options){
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -702,14 +760,14 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"findLeaderboard\", params): Specify name in params table.");
                 return 0;
             }
-        }else if (lua_isstring(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TSTRING){
             name = lua_tostring(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"findLeaderboard\", params): Specify name in params table.");
             return 0;
         }
         SteamAPICall_t hSteamAPICall = SteamUserStats()->FindLeaderboard( name );
-        m_callResultFindLeaderboard.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardFindResult );
+        fcallResultFindLeaderboard.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardFindResult );
         
         lua_pushboolean(L, hSteamAPICall? 1 : 0);
         result = 1;
@@ -719,7 +777,7 @@ SteamworksProvider::Request(lua_State *L)
         SteamLeaderboard_t leaderboard;
         if (options){
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -727,7 +785,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardName\", params): Specify leaderboard in params table.");
                 return 0;
             }
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             leaderboard = lua_tonumber(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardName\", params): Specify leaderboard in params table.");
@@ -742,7 +800,7 @@ SteamworksProvider::Request(lua_State *L)
         SteamLeaderboard_t leaderboard;
         if (options){
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -750,7 +808,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardEntryCount\", params): Specify leaderboard in params table.");
                 return 0;
             }
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             leaderboard = lua_tonumber(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardEntryCount\", params): Specify leaderboard in params table.");
@@ -765,7 +823,7 @@ SteamworksProvider::Request(lua_State *L)
         SteamLeaderboard_t leaderboard;
         if (options){
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -773,7 +831,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardSortMethod\", params): Specify leaderboard in params table.");
                 return 0;
             }
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             leaderboard = lua_tonumber(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardSortMethod\", params): Specify leaderboard in params table.");
@@ -797,7 +855,7 @@ SteamworksProvider::Request(lua_State *L)
         SteamLeaderboard_t leaderboard;
         if (options){
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -805,7 +863,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardDisplayType\", params): Specify leaderboard in params table.");
                 return 0;
             }
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             leaderboard = lua_tonumber(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"getLeaderboardDisplayType\", params): Specify leaderboard in params table.");
@@ -838,25 +896,25 @@ SteamworksProvider::Request(lua_State *L)
             int rangeStart = 0, rangeEnd = 0;
             
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "dataRequest");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 dataRequestString = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "rangeStart");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 rangeStart = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "rangeEnd");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 rangeEnd = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
@@ -875,7 +933,7 @@ SteamworksProvider::Request(lua_State *L)
             }
 
             SteamAPICall_t hSteamAPICall = SteamUserStats()->DownloadLeaderboardEntries(leaderboard, dataRequest, rangeStart, rangeEnd);
-            m_callResultDownloadedLeaderboardScores.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardScoresDownloaded );
+            fcallResultDownloadedLeaderboardScores.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardScoresDownloaded );
             
             lua_pushboolean(L, hSteamAPICall ? 1 : 0 );
             result = 1;
@@ -893,11 +951,10 @@ SteamworksProvider::Request(lua_State *L)
             int count = 0;
             
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
-            
             lua_getfield(L, -1, "users");
             if (lua_istable(L, -1)){
                 count = (int)lua_objlen(L, -1);
@@ -906,8 +963,10 @@ SteamworksProvider::Request(lua_State *L)
                 lua_pushnil(L);  /* first key */
                 int i = 0;
                 while (lua_next(L, t) != 0) {
-                    uint64 userID = lua_tonumber(L, -1);
-                    prgUsers[i] = CSteamID(userID);
+                    if (lua_type(L, -1) == LUA_TSTRING){
+                        const char *userID = lua_tostring(L, -1);
+                        prgUsers[i] = stringToSteamID(userID);
+                    }
                     i++;
                     lua_pop(L, 1);
                 }
@@ -920,7 +979,7 @@ SteamworksProvider::Request(lua_State *L)
             }
             
             SteamAPICall_t hSteamAPICall = SteamUserStats()->DownloadLeaderboardEntriesForUsers(leaderboard, prgUsers, count);
-            m_callResultDownloadedLeaderboardScores.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardScoresDownloaded );
+            fcallResultDownloadedLeaderboardScores.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardScoresDownloaded );
             
             lua_pushboolean(L, hSteamAPICall ? 1 : 0);
             result = 1;
@@ -938,13 +997,13 @@ SteamworksProvider::Request(lua_State *L)
             LeaderboardEntry_t leaderboardEntry;
             
             lua_getfield(L, -1, "entries");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 entries = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "index");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 index = lua_tonumber(L, -1);
                 index--;
             }
@@ -960,7 +1019,7 @@ SteamworksProvider::Request(lua_State *L)
             if (success){
                 lua_newtable(L);
                 
-                lua_pushnumber( L, leaderboardEntry.m_steamIDUser.ConvertToUint64() );
+                lua_pushstring( L, steamIDToString(leaderboardEntry.m_steamIDUser) );
                 lua_setfield( L, -2, "user" );
                 
                 lua_pushnumber( L, leaderboardEntry.m_nGlobalRank );
@@ -994,19 +1053,19 @@ SteamworksProvider::Request(lua_State *L)
             int32 score;
             
             lua_getfield(L, -1, "leaderboard");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 leaderboard = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "uploadScoreMethod");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 uploadScoreMethodString = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "score");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 score = (int32)lua_tointeger(L, -1);
             }else{
                 CoronaLuaError(L, "gameNetwork.request(\"uploadLeaderboardScore\", params): Specify leaderboard, uploadScoreMethod, score in params table.");
@@ -1027,7 +1086,7 @@ SteamworksProvider::Request(lua_State *L)
             }
             
             SteamAPICall_t hSteamAPICall = SteamUserStats()->UploadLeaderboardScore(leaderboard, uploadScoreMethod, score, NULL, 0);
-            m_callResultUploadedLeaderboardScore.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardScoreUploaded );
+            fcallResultUploadedLeaderboardScore.Set( hSteamAPICall, this, &SteamworksProvider::OnLeaderboardScoreUploaded );
             
             lua_pushboolean(L, hSteamAPICall ? 1 : 0);
             result = 1;
@@ -1037,7 +1096,7 @@ SteamworksProvider::Request(lua_State *L)
     //gameNetwork.request("getNumberOfCurrentPlayers")
     else if (0 == strcmp(command, "getNumberOfCurrentPlayers")){
         SteamAPICall_t hSteamAPICall = SteamUserStats()->GetNumberOfCurrentPlayers();
-        m_callResultNumberOfCurrentPlayers.Set( hSteamAPICall, this, &SteamworksProvider::OnNumberOfCurrentPlayers );
+        fcallResultNumberOfCurrentPlayers.Set( hSteamAPICall, this, &SteamworksProvider::OnNumberOfCurrentPlayers );
         lua_pushboolean(L, hSteamAPICall ? 1 : 0);
         result = 1;
     }
@@ -1045,7 +1104,7 @@ SteamworksProvider::Request(lua_State *L)
     //gameNetwork.request("requestGlobalAchievementPercentages")
     else if (0 == strcmp(command, "requestGlobalAchievementPercentages")){
         SteamAPICall_t hSteamAPICall = SteamUserStats()->RequestGlobalAchievementPercentages();
-        m_callResultGlobalAchievementPercentagesReady.Set( hSteamAPICall, this, &SteamworksProvider::OnGlobalAchievementPercentagesReady );
+        fcallResultGlobalAchievementPercentagesReady.Set( hSteamAPICall, this, &SteamworksProvider::OnGlobalAchievementPercentagesReady );
         lua_pushboolean(L, hSteamAPICall? 1 : 0);
         result = 1;
     }
@@ -1068,16 +1127,16 @@ SteamworksProvider::Request(lua_State *L)
         int historyDays = 0;
         if (options){
             lua_getfield(L, -1, "historyDays");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 historyDays = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
-        }else if (lua_isnumber(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TNUMBER){
             historyDays = lua_tonumber(L, 2);
         }
         if (historyDays > 60) historyDays = 60;
         SteamAPICall_t hSteamAPICall = SteamUserStats()->RequestGlobalStats(historyDays);
-        m_callResultReceivedGlobalStats.Set( hSteamAPICall, this, &SteamworksProvider::OnGlobalStatsReceived );
+        fcallResultReceivedGlobalStats.Set( hSteamAPICall, this, &SteamworksProvider::OnGlobalStatsReceived );
         
         lua_pushboolean(L, hSteamAPICall ? 1 : 0);
         result = 1;
@@ -1087,7 +1146,7 @@ SteamworksProvider::Request(lua_State *L)
         const char *name;
         if (options){
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
                 lua_pop(L, 1);
             }else{
@@ -1095,7 +1154,7 @@ SteamworksProvider::Request(lua_State *L)
                 CoronaLuaError(L, "gameNetwork.request(\"getGlobalStat\", params): Specify name in params table.");
                 return 0;
             }
-        }else if (lua_isstring(L, 2)){
+        }else if (lua_type(L, 2) == LUA_TSTRING){
             name = lua_tostring(L, 2);
         }else{
             CoronaLuaError(L, "gameNetwork.request(\"getGlobalStat\", params): Specify name in params table.");
@@ -1126,13 +1185,13 @@ SteamworksProvider::Request(lua_State *L)
             int days = 0;
             
             lua_getfield(L, -1, "name");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TSTRING){
                 name = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
             
             lua_getfield(L, -1, "days");
-            if (!lua_isnil(L, -1)){
+            if (lua_type(L, -1) == LUA_TNUMBER){
                 days = lua_tonumber(L, -1);
             }
             lua_pop(L, 1);
@@ -1171,6 +1230,26 @@ SteamworksProvider::Request(lua_State *L)
         }
         
     }
+    //gameNetwork.request("getPersonaName")
+    //gameNetwork.request("getPersonaName", {user = "12345678"})
+    else if (0 == strcmp(command, "getPersonaName")){
+        const char *user = NULL;
+        if (options){
+            lua_getfield(L, -1, "user");
+            if (lua_type(L, -1) == LUA_TSTRING){
+                user = lua_tostring(L, -1);
+            }
+            lua_pop(L, 1);
+        }else if (lua_type(L, 2) == LUA_TSTRING){
+            user = lua_tostring(L, 2);
+        }
+        if (user){
+            lua_pushstring(L, SteamFriends()->GetFriendPersonaName(stringToSteamID(user)));
+        }else{
+            lua_pushstring(L, SteamFriends()->GetPersonaName());
+        }
+        result = 1;
+    }
 	return result;
 }
 
@@ -1184,19 +1263,19 @@ SteamworksProvider::Request(lua_State *L)
 void
 SteamworksProvider::OnUserStatsReceived( UserStatsReceived_t *pCallback )
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onUserStatsReceived");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onUserStatsReceived");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pCallback->m_nGameID);
-    lua_setfield(_L, -2, "gameID");
+    lua_pushnumber(fL, pCallback->m_nGameID);
+    lua_setfield(fL, -2, "gameID");
     
-    lua_pushnumber(_L, pCallback->m_eResult);
-    lua_setfield(_L, -2, "result");
+    lua_pushnumber(fL, pCallback->m_eResult);
+    lua_setfield(fL, -2, "result");
     
-    lua_pushnumber(_L, pCallback->m_steamIDUser.ConvertToUint64());
-    lua_setfield(_L, -2, "user");
+    lua_pushstring(fL, steamIDToString(pCallback->m_steamIDUser));
+    lua_setfield(fL, -2, "user");
     
     Dispatch(pCallback->m_eResult!=k_EResultOK);
 }
@@ -1204,41 +1283,41 @@ SteamworksProvider::OnUserStatsReceived( UserStatsReceived_t *pCallback )
 void
 SteamworksProvider::OnUserStatsStored( UserStatsStored_t *pCallback)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onUserStatsStored");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onUserStatsStored");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pCallback->m_nGameID);
-    lua_setfield(_L, -2, "gameID");
+    lua_pushnumber(fL, pCallback->m_nGameID);
+    lua_setfield(fL, -2, "gameID");
     
-    lua_pushnumber(_L, pCallback->m_eResult);
-    lua_setfield(_L, -2, "result");
+    lua_pushnumber(fL, pCallback->m_eResult);
+    lua_setfield(fL, -2, "result");
     
     Dispatch(pCallback->m_eResult!=k_EResultOK);
 }
 void
 SteamworksProvider::OnUserAchievementStored(UserAchievementStored_t *pCallback)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onUserAchievementStored");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onUserAchievementStored");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pCallback->m_nGameID);
-    lua_setfield(_L, -2, "gameID");
+    lua_pushnumber(fL, pCallback->m_nGameID);
+    lua_setfield(fL, -2, "gameID");
     
-    lua_pushboolean(_L, pCallback->m_bGroupAchievement);
-    lua_setfield(_L, -2, "groupAchievement");
+    lua_pushboolean(fL, pCallback->m_bGroupAchievement);
+    lua_setfield(fL, -2, "groupAchievement");
     
-    lua_pushstring(_L, pCallback->m_rgchAchievementName);
-    lua_setfield(_L, -2, "name");
+    lua_pushstring(fL, pCallback->m_rgchAchievementName);
+    lua_setfield(fL, -2, "name");
     
-    lua_pushnumber(_L, pCallback->m_nCurProgress);
-    lua_setfield(_L, -2, "currProgress");
+    lua_pushnumber(fL, pCallback->m_nCurProgress);
+    lua_setfield(fL, -2, "currProgress");
     
-    lua_pushnumber(_L, pCallback->m_nMaxProgress);
-    lua_setfield(_L, -2, "maxProgress");
+    lua_pushnumber(fL, pCallback->m_nMaxProgress);
+    lua_setfield(fL, -2, "maxProgress");
     
     Dispatch(false);
 }
@@ -1246,16 +1325,16 @@ SteamworksProvider::OnUserAchievementStored(UserAchievementStored_t *pCallback)
 void
 SteamworksProvider::OnLeaderboardFindResult(LeaderboardFindResult_t *pResult, bool bIOFailure)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onLeaderboardFindResult");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onLeaderboardFindResult");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pResult->m_hSteamLeaderboard);
-    lua_setfield(_L, -2, "steamLeaderboard");
+    lua_pushnumber(fL, pResult->m_hSteamLeaderboard);
+    lua_setfield(fL, -2, "steamLeaderboard");
     
-    lua_pushboolean(_L, pResult->m_bLeaderboardFound);
-    lua_setfield(_L, -2, "leaderboardFound");
+    lua_pushboolean(fL, pResult->m_bLeaderboardFound);
+    lua_setfield(fL, -2, "leaderboardFound");
     
     Dispatch(bIOFailure || !pResult->m_hSteamLeaderboard);
 }
@@ -1264,19 +1343,19 @@ SteamworksProvider::OnLeaderboardFindResult(LeaderboardFindResult_t *pResult, bo
 void
 SteamworksProvider::OnLeaderboardScoresDownloaded(LeaderboardScoresDownloaded_t *pResult, bool bIOFailure)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onLeaderboardScoresDownloaded");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onLeaderboardScoresDownloaded");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pResult->m_hSteamLeaderboard);
-    lua_setfield(_L, -2, "steamLeaderboard");
+    lua_pushnumber(fL, pResult->m_hSteamLeaderboard);
+    lua_setfield(fL, -2, "steamLeaderboard");
     
-    lua_pushnumber(_L, pResult->m_hSteamLeaderboardEntries);
-    lua_setfield(_L, -2, "leaderboardEntries");
+    lua_pushnumber(fL, pResult->m_hSteamLeaderboardEntries);
+    lua_setfield(fL, -2, "leaderboardEntries");
     
-    lua_pushnumber(_L, pResult->m_cEntryCount);
-    lua_setfield(_L, -2, "count");
+    lua_pushnumber(fL, pResult->m_cEntryCount);
+    lua_setfield(fL, -2, "count");
     
     Dispatch(bIOFailure);
 }
@@ -1286,28 +1365,28 @@ void
 SteamworksProvider::OnLeaderboardScoreUploaded(LeaderboardScoreUploaded_t *pResult, bool bIOFailure)
 {
     CoronaLog("OnLeaderboardScoreUploaded");
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onLeaderboardScoreUploaded");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onLeaderboardScoreUploaded");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushboolean(_L, pResult->m_bSuccess);
-    lua_setfield(_L, -2, "success");
+    lua_pushboolean(fL, pResult->m_bSuccess);
+    lua_setfield(fL, -2, "success");
     
-    lua_pushnumber(_L, pResult->m_hSteamLeaderboard);
-    lua_setfield(_L, -2, "steamLeaderboard");
+    lua_pushnumber(fL, pResult->m_hSteamLeaderboard);
+    lua_setfield(fL, -2, "steamLeaderboard");
     
-    lua_pushnumber(_L, pResult->m_nScore);
-    lua_setfield(_L, -2, "score");
+    lua_pushnumber(fL, pResult->m_nScore);
+    lua_setfield(fL, -2, "score");
     
-    lua_pushboolean(_L, pResult->m_bScoreChanged);
-    lua_setfield(_L, -2, "scoreChanged");
+    lua_pushboolean(fL, pResult->m_bScoreChanged);
+    lua_setfield(fL, -2, "scoreChanged");
     
-    lua_pushnumber(_L, pResult->m_nGlobalRankNew);
-    lua_setfield(_L, -2, "globalRankNew");
+    lua_pushnumber(fL, pResult->m_nGlobalRankNew);
+    lua_setfield(fL, -2, "globalRankNew");
     
-    lua_pushnumber(_L, pResult->m_nGlobalRankPrevious);
-    lua_setfield(_L, -2, "globalRankPrevious");
+    lua_pushnumber(fL, pResult->m_nGlobalRankPrevious);
+    lua_setfield(fL, -2, "globalRankPrevious");
     
     Dispatch(!pResult->m_bSuccess || bIOFailure);
     
@@ -1317,16 +1396,16 @@ SteamworksProvider::OnLeaderboardScoreUploaded(LeaderboardScoreUploaded_t *pResu
 void
 SteamworksProvider::OnNumberOfCurrentPlayers(NumberOfCurrentPlayers_t *pResult, bool bIOFailure)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onNumberOfCurrentPlayers");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onNumberOfCurrentPlayers");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushboolean(_L, pResult->m_bSuccess);
-    lua_setfield(_L, -2, "success");
+    lua_pushboolean(fL, pResult->m_bSuccess);
+    lua_setfield(fL, -2, "success");
     
-    lua_pushnumber(_L, pResult->m_cPlayers);
-    lua_setfield(_L, -2, "players");
+    lua_pushnumber(fL, pResult->m_cPlayers);
+    lua_setfield(fL, -2, "players");
 
     Dispatch(bIOFailure || !pResult->m_bSuccess);
 }
@@ -1335,13 +1414,13 @@ SteamworksProvider::OnNumberOfCurrentPlayers(NumberOfCurrentPlayers_t *pResult, 
 void
 SteamworksProvider::OnUserStatsUnloaded(UserStatsUnloaded_t *pCallback)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onUserStatsUnloaded");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onUserStatsUnloaded");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pCallback->m_steamIDUser.ConvertToUint64());
-    lua_setfield(_L, -2, "user");
+    lua_pushstring(fL, steamIDToString(pCallback->m_steamIDUser));
+    lua_setfield(fL, -2, "user");
     
     Dispatch(false);
 }
@@ -1350,22 +1429,22 @@ SteamworksProvider::OnUserStatsUnloaded(UserStatsUnloaded_t *pCallback)
 void
 SteamworksProvider::OnUserAchievementIconFetched(UserAchievementIconFetched_t *pCallback)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onUserAchievementIconFetched");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onUserAchievementIconFetched");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pCallback->m_nGameID.ToUint64());
-    lua_setfield(_L, -2, "gameID");
+    lua_pushnumber(fL, pCallback->m_nGameID.ToUint64());
+    lua_setfield(fL, -2, "gameID");
     
-    lua_pushstring(_L, pCallback->m_rgchAchievementName);
-    lua_setfield(_L, -2, "schievementName");
+    lua_pushstring(fL, pCallback->m_rgchAchievementName);
+    lua_setfield(fL, -2, "schievementName");
     
-    lua_pushboolean(_L, pCallback->m_bAchieved);
-    lua_setfield(_L, -2, "achieved");
+    lua_pushboolean(fL, pCallback->m_bAchieved);
+    lua_setfield(fL, -2, "achieved");
     
-    lua_pushnumber(_L, pCallback->m_nIconHandle);
-    lua_setfield(_L, -2, "iconID");
+    lua_pushnumber(fL, pCallback->m_nIconHandle);
+    lua_setfield(fL, -2, "iconID");
 
     Dispatch(false);
 }
@@ -1374,16 +1453,16 @@ SteamworksProvider::OnUserAchievementIconFetched(UserAchievementIconFetched_t *p
 void
 SteamworksProvider::OnGlobalAchievementPercentagesReady(GlobalAchievementPercentagesReady_t *pResult, bool bIOFailure)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onGlobalAchievementPercentagesReady");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onGlobalAchievementPercentagesReady");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pResult->m_nGameID);
-    lua_setfield(_L, -2, "gameID");
+    lua_pushnumber(fL, pResult->m_nGameID);
+    lua_setfield(fL, -2, "gameID");
     
-    lua_pushnumber(_L, pResult->m_eResult);
-    lua_setfield(_L, -2, "result");
+    lua_pushnumber(fL, pResult->m_eResult);
+    lua_setfield(fL, -2, "result");
 
     Dispatch(pResult->m_eResult != k_EResultOK || bIOFailure);
 }
@@ -1391,10 +1470,10 @@ SteamworksProvider::OnGlobalAchievementPercentagesReady(GlobalAchievementPercent
 void
 SteamworksProvider::OnLeaderboardUGCSet(LeaderboardUGCSet_t *pCallback)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onLeaderboardUGCSet");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onLeaderboardUGCSet");
+    lua_setfield(fL, -2, "type");
     
     Dispatch(false);
 }
@@ -1403,16 +1482,16 @@ SteamworksProvider::OnLeaderboardUGCSet(LeaderboardUGCSet_t *pCallback)
 void
 SteamworksProvider::OnGlobalStatsReceived(GlobalStatsReceived_t *pResult, bool bIOFailure)
 {
-    CoronaLuaNewEvent(_L, kEventName);
+    CoronaLuaNewEvent(fL, kEventName);
     
-    lua_pushstring(_L, "onGlobalStatsReceived");
-    lua_setfield(_L, -2, "type");
+    lua_pushstring(fL, "onGlobalStatsReceived");
+    lua_setfield(fL, -2, "type");
     
-    lua_pushnumber(_L, pResult->m_nGameID);
-    lua_setfield(_L, -2, "gameID");
+    lua_pushnumber(fL, pResult->m_nGameID);
+    lua_setfield(fL, -2, "gameID");
     
-    lua_pushnumber(_L, pResult->m_eResult);
-    lua_setfield(_L, -2, "result");
+    lua_pushnumber(fL, pResult->m_eResult);
+    lua_setfield(fL, -2, "result");
     
     Dispatch(pResult->m_eResult != k_EResultOK || bIOFailure);
 }
