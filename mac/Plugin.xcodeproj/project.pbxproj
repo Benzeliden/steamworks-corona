@@ -15,6 +15,8 @@
 /* Begin PBXFileReference section */
 		80033D801B55852100EE3BF7 /* SteamworksProvider.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksProvider.cpp; sourceTree = "<group>"; };
 		80033D811B55852100EE3BF7 /* SteamworksProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksProvider.h; sourceTree = "<group>"; };
+		802C98A11B6AD2DE00D2BEA5 /* gameoverlayrenderer.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = gameoverlayrenderer.dylib; path = ../../../../../Applications/Steam.app/Contents/MacOS/gameoverlayrenderer.dylib; sourceTree = "<group>"; };
+		802C98A21B6AD2DE00D2BEA5 /* gameoverlayui.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = gameoverlayui.dylib; path = ../../../../../Applications/Steam.app/Contents/MacOS/gameoverlayui.dylib; sourceTree = "<group>"; };
 		807BBF691B4C7AD2003A223B /* CoronaProvider_gameNetwork_steamworks.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = CoronaProvider_gameNetwork_steamworks.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		807BC08B1B4C8C06003A223B /* libsteam_api.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsteam_api.dylib; path = ../sdk/redistributable_bin/osx32/libsteam_api.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -34,6 +36,8 @@
 		807BBF601B4C7AD2003A223B = {
 			isa = PBXGroup;
 			children = (
+				802C98A11B6AD2DE00D2BEA5 /* gameoverlayrenderer.dylib */,
+				802C98A21B6AD2DE00D2BEA5 /* gameoverlayui.dylib */,
 				807BC08D1B4C8C0A003A223B /* sdk */,
 				807BBF831B4C7D50003A223B /* src */,
 				807BBF6A1B4C7AD2003A223B /* Products */,
@@ -247,6 +251,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					../sdk/redistributable_bin/osx32/,
+					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_LDFLAGS = (
@@ -276,6 +281,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					../sdk/redistributable_bin/osx32/,
+					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_LDFLAGS = (
