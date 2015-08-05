@@ -11,10 +11,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\SteamworksDelegate.h" />
     <ClInclude Include="..\src\SteamworksProvider.h" />
+    <ClInclude Include="..\src\SteamworksUtils.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\SteamworksDelegate.cpp" />
     <ClCompile Include="..\src\SteamworksProvider.cpp" />
+    <ClCompile Include="..\src\SteamworksUtils.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{88B792CE-3568-4F49-96F7-96B3694FF8C2}</ProjectGuid>
