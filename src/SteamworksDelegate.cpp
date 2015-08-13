@@ -165,3 +165,58 @@ SteamworksDelegate::OnGlobalStatsReceived(GlobalStatsReceived_t *pResult, bool b
     
     Dispatch(pResult->m_eResult != k_EResultOK || bIOFailure );
 }
+
+void
+SteamworksDelegate::OnHTTPRequestCompleted(HTTPRequestCompleted_t *pResult, bool bIOFailure)
+{
+    uint32 bodySize;
+    SteamHTTP()->GetHTTPResponseBodySize( pResult->m_hRequest, &bodySize );
+    
+    uint8 *bodyDataBuffer = new uint8[bodySize];
+    SteamHTTP()->GetHTTPResponseBodyData( pResult->m_hRequest, bodyDataBuffer, bodySize );
+    
+    const char *response = (const char *)bodyDataBuffer;
+    
+    //improve reponse format
+    
+    // TODO Sometimes Ids is a 64-bit int, so json doesn't handle the number correctly and loses accuracy
+    
+    //require("json")
+    lua_getglobal(fL, "require");
+    lua_pushstring(fL, "json");
+    lua_call(fL, 1, 1);
+    //json.decode("{response:{}}")
+    lua_getfield(fL, -1, "decode");
+    lua_pushstring(fL, response);
+    lua_call(fL, 1, 1);
+    if (!lua_isnil(fL, -1)){
+        lua_getfield(fL, -1, "response");
+        if (!lua_isnil(fL, -1)){
+            lua_getfield(fL, -3, "encode");
+            lua_pushvalue(fL, -2);
+            lua_call(fL, 1, 1);
+            if (lua_isstring(fL, -1)){
+                response = lua_tostring(fL, -1);
+            }
+            lua_pop(fL, 1);
+        }
+        lua_pop(fL, 1);
+    }
+    lua_pop(fL, 2);
+
+    
+    CoronaLuaNewEvent(fL, kEventName);
+    
+    lua_pushstring(fL, "onHTTPRequestCompleted");
+    lua_setfield(fL, -2, "type");
+    
+    lua_pushstring(fL, response);
+    lua_setfield(fL, -2, "response");
+    
+    lua_pushnumber(fL, pResult->m_eStatusCode);
+    lua_setfield(fL, -2, "statusCode");
+    
+    Dispatch(!pResult->m_bRequestSuccessful);
+    
+    SteamHTTP()->ReleaseHTTPRequest(pResult->m_hRequest);
+}

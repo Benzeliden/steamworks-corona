@@ -59,6 +59,9 @@ public:
     
     void OnGlobalAchievementPercentagesReady( GlobalAchievementPercentagesReady_t *pResult, bool bIOFailure );
     CCallResult<SteamworksDelegate, GlobalAchievementPercentagesReady_t> fcallResultGlobalAchievementPercentagesReady;
+    
+    void OnHTTPRequestCompleted( HTTPRequestCompleted_t *pResult, bool bIOFailure );
+    CCallResult<SteamworksDelegate, HTTPRequestCompleted_t> fcallResultHTTPRequestCompleted;
 };
 
 #endif /* defined(__Plugin__SteamworksDelegate__) */

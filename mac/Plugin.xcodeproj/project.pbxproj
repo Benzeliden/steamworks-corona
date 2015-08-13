@@ -7,8 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		80033D821B55852100EE3BF7 /* SteamworksProvider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 80033D801B55852100EE3BF7 /* SteamworksProvider.cpp */; };
-		80033D831B55852100EE3BF7 /* SteamworksProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 80033D811B55852100EE3BF7 /* SteamworksProvider.h */; };
+		80033D821B55852100EE3BF7 /* SteamworksGameNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 80033D801B55852100EE3BF7 /* SteamworksGameNetwork.cpp */; };
+		80033D831B55852100EE3BF7 /* SteamworksGameNetwork.h in Headers */ = {isa = PBXBuildFile; fileRef = 80033D811B55852100EE3BF7 /* SteamworksGameNetwork.h */; };
+		800620FC1B72CFEF00E34F9D /* SteamworksStore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 800620F51B72CFE400E34F9D /* SteamworksStore.cpp */; };
+		800620FE1B72CFEF00E34F9D /* SteamworksUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */; };
+		800621001B72CFEF00E34F9D /* libsteam_api.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 807BC08B1B4C8C06003A223B /* libsteam_api.dylib */; };
+		800621021B72CFEF00E34F9D /* SteamworksStore.h in Headers */ = {isa = PBXBuildFile; fileRef = 800620F61B72CFE400E34F9D /* SteamworksStore.h */; };
+		800621031B72CFEF00E34F9D /* SteamworksUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B09101B6FF2F400015F85 /* SteamworksUtils.h */; };
+		8006210A1B73E00500E34F9D /* SteamworksDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B090C1B6FF00D00015F85 /* SteamworksDelegate.h */; };
+		8006210B1B73E00800E34F9D /* SteamworksDelegate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 801B090B1B6FF00D00015F85 /* SteamworksDelegate.cpp */; };
 		801B090D1B6FF00D00015F85 /* SteamworksDelegate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 801B090B1B6FF00D00015F85 /* SteamworksDelegate.cpp */; };
 		801B090E1B6FF00D00015F85 /* SteamworksDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B090C1B6FF00D00015F85 /* SteamworksDelegate.h */; };
 		801B09111B6FF2F400015F85 /* SteamworksUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */; };
@@ -17,8 +24,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		80033D801B55852100EE3BF7 /* SteamworksProvider.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksProvider.cpp; sourceTree = "<group>"; };
-		80033D811B55852100EE3BF7 /* SteamworksProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksProvider.h; sourceTree = "<group>"; };
+		80033D801B55852100EE3BF7 /* SteamworksGameNetwork.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksGameNetwork.cpp; sourceTree = "<group>"; };
+		80033D811B55852100EE3BF7 /* SteamworksGameNetwork.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksGameNetwork.h; sourceTree = "<group>"; };
+		800620F51B72CFE400E34F9D /* SteamworksStore.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksStore.cpp; sourceTree = "<group>"; };
+		800620F61B72CFE400E34F9D /* SteamworksStore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksStore.h; sourceTree = "<group>"; };
+		800621091B72CFEF00E34F9D /* plugin_steamworks_store.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = plugin_steamworks_store.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		801B090B1B6FF00D00015F85 /* SteamworksDelegate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksDelegate.cpp; sourceTree = "<group>"; };
 		801B090C1B6FF00D00015F85 /* SteamworksDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksDelegate.h; sourceTree = "<group>"; };
 		801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksUtils.cpp; sourceTree = "<group>"; };
@@ -28,6 +38,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		800620FF1B72CFEF00E34F9D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				800621001B72CFEF00E34F9D /* libsteam_api.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		807BBF661B4C7AD2003A223B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -52,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				807BBF691B4C7AD2003A223B /* CoronaProvider_gameNetwork_steamworks.dylib */,
+				800621091B72CFEF00E34F9D /* plugin_steamworks_store.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -59,12 +78,14 @@
 		807BBF831B4C7D50003A223B /* src */ = {
 			isa = PBXGroup;
 			children = (
-				80033D801B55852100EE3BF7 /* SteamworksProvider.cpp */,
-				80033D811B55852100EE3BF7 /* SteamworksProvider.h */,
+				80033D801B55852100EE3BF7 /* SteamworksGameNetwork.cpp */,
+				80033D811B55852100EE3BF7 /* SteamworksGameNetwork.h */,
 				801B090B1B6FF00D00015F85 /* SteamworksDelegate.cpp */,
 				801B090C1B6FF00D00015F85 /* SteamworksDelegate.h */,
 				801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */,
 				801B09101B6FF2F400015F85 /* SteamworksUtils.h */,
+				800620F51B72CFE400E34F9D /* SteamworksStore.cpp */,
+				800620F61B72CFE400E34F9D /* SteamworksStore.h */,
 			);
 			name = src;
 			path = ../src;
@@ -81,12 +102,22 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		800621011B72CFEF00E34F9D /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				800621021B72CFEF00E34F9D /* SteamworksStore.h in Headers */,
+				8006210A1B73E00500E34F9D /* SteamworksDelegate.h in Headers */,
+				800621031B72CFEF00E34F9D /* SteamworksUtils.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		807BBF671B4C7AD2003A223B /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				801B09121B6FF2F400015F85 /* SteamworksUtils.h in Headers */,
-				80033D831B55852100EE3BF7 /* SteamworksProvider.h in Headers */,
+				80033D831B55852100EE3BF7 /* SteamworksGameNetwork.h in Headers */,
 				801B090E1B6FF00D00015F85 /* SteamworksDelegate.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -94,6 +125,23 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		800620F91B72CFEF00E34F9D /* plugin_steamworks_store */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800621061B72CFEF00E34F9D /* Build configuration list for PBXNativeTarget "plugin_steamworks_store" */;
+			buildPhases = (
+				800620FA1B72CFEF00E34F9D /* Sources */,
+				800620FF1B72CFEF00E34F9D /* Frameworks */,
+				800621011B72CFEF00E34F9D /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = plugin_steamworks_store;
+			productName = Plugin;
+			productReference = 800621091B72CFEF00E34F9D /* plugin_steamworks_store.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		807BBF681B4C7AD2003A223B /* CoronaProvider_gameNetwork_steamworks */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 807BBF7D1B4C7AD2003A223B /* Build configuration list for PBXNativeTarget "CoronaProvider_gameNetwork_steamworks" */;
@@ -138,17 +186,28 @@
 			projectRoot = "";
 			targets = (
 				807BBF681B4C7AD2003A223B /* CoronaProvider_gameNetwork_steamworks */,
+				800620F91B72CFEF00E34F9D /* plugin_steamworks_store */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		800620FA1B72CFEF00E34F9D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				800620FC1B72CFEF00E34F9D /* SteamworksStore.cpp in Sources */,
+				800620FE1B72CFEF00E34F9D /* SteamworksUtils.cpp in Sources */,
+				8006210B1B73E00800E34F9D /* SteamworksDelegate.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		807BBF651B4C7AD2003A223B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				801B090D1B6FF00D00015F85 /* SteamworksDelegate.cpp in Sources */,
-				80033D821B55852100EE3BF7 /* SteamworksProvider.cpp in Sources */,
+				80033D821B55852100EE3BF7 /* SteamworksGameNetwork.cpp in Sources */,
 				801B09111B6FF2F400015F85 /* SteamworksUtils.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -156,6 +215,66 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		800621071B72CFEF00E34F9D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "compiler-default";
+				CLANG_ENABLE_MODULES = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				HEADER_SEARCH_PATHS = (
+					../src,
+					../sdk/public/steam,
+					"${SRCROOT}/CoronaEnterprise/Corona/shared/include/lua",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					../sdk/redistributable_bin/osx32/,
+					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+				PRODUCT_MODULE_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		800621081B72CFEF00E34F9D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "compiler-default";
+				CLANG_ENABLE_MODULES = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				HEADER_SEARCH_PATHS = (
+					../src,
+					../sdk/public/steam,
+					"${SRCROOT}/CoronaEnterprise/Corona/shared/include/lua",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					../sdk/redistributable_bin/osx32/,
+					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+				PRODUCT_MODULE_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		807BBF7B1B4C7AD2003A223B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -308,6 +427,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		800621061B72CFEF00E34F9D /* Build configuration list for PBXNativeTarget "plugin_steamworks_store" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				800621071B72CFEF00E34F9D /* Debug */,
+				800621081B72CFEF00E34F9D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		807BBF641B4C7AD2003A223B /* Build configuration list for PBXProject "Plugin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

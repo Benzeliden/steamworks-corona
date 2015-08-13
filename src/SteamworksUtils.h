@@ -19,6 +19,9 @@ class SteamworksUtils
 public:
     static const char* steamIDToString(CSteamID id);
     static CSteamID stringToSteamID(const char* stringID);
+    static bool makeAppIdEnvVar(lua_State *L);
+    static void stackdump_g(lua_State* L);
+    static const char* getWebAPIKey(lua_State *L);
 };
 
 #endif /* defined(__Plugin__SteamworksUtils__) */
