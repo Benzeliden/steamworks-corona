@@ -8,7 +8,7 @@
 
 #include "SteamworksUtils.h"
 
-
+//TODO: why not use CSteamID::SetFromString and CSteamID::Render instead of this two functions
 const char*
 SteamworksUtils::steamIDToString(CSteamID id)
 {
