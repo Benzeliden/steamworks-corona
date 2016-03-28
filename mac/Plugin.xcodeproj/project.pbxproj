@@ -11,7 +11,6 @@
 		80033D831B55852100EE3BF7 /* SteamworksGameNetwork.h in Headers */ = {isa = PBXBuildFile; fileRef = 80033D811B55852100EE3BF7 /* SteamworksGameNetwork.h */; };
 		800620FC1B72CFEF00E34F9D /* SteamworksStore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 800620F51B72CFE400E34F9D /* SteamworksStore.cpp */; };
 		800620FE1B72CFEF00E34F9D /* SteamworksUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */; };
-		800621001B72CFEF00E34F9D /* libsteam_api.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 807BC08B1B4C8C06003A223B /* libsteam_api.dylib */; };
 		800621021B72CFEF00E34F9D /* SteamworksStore.h in Headers */ = {isa = PBXBuildFile; fileRef = 800620F61B72CFE400E34F9D /* SteamworksStore.h */; };
 		800621031B72CFEF00E34F9D /* SteamworksUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B09101B6FF2F400015F85 /* SteamworksUtils.h */; };
 		8006210A1B73E00500E34F9D /* SteamworksDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B090C1B6FF00D00015F85 /* SteamworksDelegate.h */; };
@@ -20,10 +19,10 @@
 		801B090E1B6FF00D00015F85 /* SteamworksDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B090C1B6FF00D00015F85 /* SteamworksDelegate.h */; };
 		801B09111B6FF2F400015F85 /* SteamworksUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */; };
 		801B09121B6FF2F400015F85 /* SteamworksUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 801B09101B6FF2F400015F85 /* SteamworksUtils.h */; };
-		807BC08E1B4C9D43003A223B /* libsteam_api.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 807BC08B1B4C8C06003A223B /* libsteam_api.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		033235EA1CA6285B001E62D6 /* libsteam_api.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsteam_api.dylib; path = ../Dependencies/Steam/redistributable_bin/osx32/libsteam_api.dylib; sourceTree = "<group>"; };
 		80033D801B55852100EE3BF7 /* SteamworksGameNetwork.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksGameNetwork.cpp; sourceTree = "<group>"; };
 		80033D811B55852100EE3BF7 /* SteamworksGameNetwork.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksGameNetwork.h; sourceTree = "<group>"; };
 		800620F51B72CFE400E34F9D /* SteamworksStore.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksStore.cpp; sourceTree = "<group>"; };
@@ -34,7 +33,6 @@
 		801B090F1B6FF2F400015F85 /* SteamworksUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SteamworksUtils.cpp; sourceTree = "<group>"; };
 		801B09101B6FF2F400015F85 /* SteamworksUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SteamworksUtils.h; sourceTree = "<group>"; };
 		807BBF691B4C7AD2003A223B /* CoronaProvider_gameNetwork_steamworks.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = CoronaProvider_gameNetwork_steamworks.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		807BC08B1B4C8C06003A223B /* libsteam_api.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsteam_api.dylib; path = ../sdk/redistributable_bin/osx32/libsteam_api.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,7 +40,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				800621001B72CFEF00E34F9D /* libsteam_api.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -50,7 +47,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				807BC08E1B4C9D43003A223B /* libsteam_api.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,7 +90,7 @@
 		807BC08D1B4C8C0A003A223B /* sdk */ = {
 			isa = PBXGroup;
 			children = (
-				807BC08B1B4C8C06003A223B /* libsteam_api.dylib */,
+				033235EA1CA6285B001E62D6 /* libsteam_api.dylib */,
 			);
 			name = sdk;
 			sourceTree = "<group>";
@@ -225,15 +221,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				HEADER_SEARCH_PATHS = (
-					../src,
-					../sdk/public/steam,
-					"${SRCROOT}/CoronaEnterprise/Corona/shared/include/lua",
-				);
+				HEADER_SEARCH_PATHS = "";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					../sdk/redistributable_bin/osx32/,
-					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
+					../Dependencies/Steam/redistributable_bin/osx32,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_LDFLAGS = (
@@ -242,6 +233,7 @@
 				);
 				PRODUCT_MODULE_NAME = "$(TARGET_NAME)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "../Dependencies/Corona/shared/include/Corona ../Dependencies/Corona/shared/include/lua ../Dependencies/Steam/public/steam";
 			};
 			name = Debug;
 		};
@@ -255,15 +247,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				HEADER_SEARCH_PATHS = (
-					../src,
-					../sdk/public/steam,
-					"${SRCROOT}/CoronaEnterprise/Corona/shared/include/lua",
-				);
+				HEADER_SEARCH_PATHS = "";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					../sdk/redistributable_bin/osx32/,
-					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
+					../Dependencies/Steam/redistributable_bin/osx32,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_LDFLAGS = (
@@ -272,6 +259,7 @@
 				);
 				PRODUCT_MODULE_NAME = "$(TARGET_NAME)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "../Dependencies/Corona/shared/include/Corona ../Dependencies/Corona/shared/include/lua ../Dependencies/Steam/public/steam";
 			};
 			name = Release;
 		};
@@ -374,15 +362,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				HEADER_SEARCH_PATHS = (
-					../src,
-					../sdk/public/steam,
-					"${SRCROOT}/CoronaEnterprise/Corona/shared/include/lua",
-				);
+				HEADER_SEARCH_PATHS = "";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					../sdk/redistributable_bin/osx32/,
-					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
+					../Dependencies/Steam/redistributable_bin/osx32,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_LDFLAGS = (
@@ -391,6 +374,7 @@
 				);
 				PRODUCT_MODULE_NAME = "$(TARGET_NAME)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "../Dependencies/Corona/shared/include/Corona ../Dependencies/Corona/shared/include/lua ../Dependencies/Steam/public/steam";
 			};
 			name = Debug;
 		};
@@ -404,15 +388,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				HEADER_SEARCH_PATHS = (
-					../src,
-					../sdk/public/steam,
-					"${SRCROOT}/CoronaEnterprise/Corona/shared/include/lua",
-				);
+				HEADER_SEARCH_PATHS = "";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					../sdk/redistributable_bin/osx32/,
-					"$(SYSTEM_APPS_DIR)/Steam.app/Contents/MacOS",
+					../Dependencies/Steam/redistributable_bin/osx32,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_LDFLAGS = (
@@ -421,6 +400,7 @@
 				);
 				PRODUCT_MODULE_NAME = "$(TARGET_NAME)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "../Dependencies/Corona/shared/include/Corona ../Dependencies/Corona/shared/include/lua ../Dependencies/Steam/public/steam";
 			};
 			name = Release;
 		};
