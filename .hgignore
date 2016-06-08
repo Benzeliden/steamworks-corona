@@ -25,6 +25,7 @@ contents.xcworkspacedata
 Desktop DB
 Desktop DF
 
+*/out/*
 */build/*
 *.pbxuser
 *.perspective*
