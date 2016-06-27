@@ -7,6 +7,7 @@
     <ClCompile Include="SteamworksLuaInterface.cpp" />
     <ClCompile Include="DispatchEventTask.cpp" />
     <ClCompile Include="SteamStatValueType.cpp" />
+    <ClCompile Include="SteamImageWrapper.cpp" />
     <ClCompile Include="PluginConfigLuaSettings.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -18,6 +19,7 @@
     <ClInclude Include="PluginMacros.h" />
     <ClInclude Include="DispatchEventTask.h" />
     <ClInclude Include="SteamStatValueType.h" />
+    <ClInclude Include="SteamImageWrapper.h" />
     <ClInclude Include="PluginConfigLuaSettings.h" />
   </ItemGroup>
 </Project>

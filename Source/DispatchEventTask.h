@@ -305,3 +305,41 @@ class DispatchUserStatsUnloadedEventTask : public BaseDispatchEventTask
 	private:
 		uint64 fUserIntegerId;
 };
+
+/** Dispatches a Steam "UserAchievementIconFetched_t" event and its data to Lua. */
+class DispatchAchievementIconFetched : public BaseDispatchEventTask
+{
+public:
+	static const char kLuaEventName[];
+
+	DispatchAchievementIconFetched();
+	virtual ~DispatchAchievementIconFetched();
+
+	void AcquireEventDataFrom(const UserAchievementIconFetched_t& steamEventData);
+	virtual const char* GetLuaEventName() const;
+	virtual bool PushLuaEventTableTo(lua_State* luaStatePointer) const;
+
+private:
+	std::string fAchievementName;
+	bool fAchieved;
+	int fImage;
+};
+
+/** Dispatches a Steam "AvatarImageLoaded_t" event and its data to Lua. */
+class DispatchAvatarImageLoaded : public BaseDispatchEventTask
+{
+public:
+	static const char kLuaEventName[];
+
+	DispatchAvatarImageLoaded();
+	virtual ~DispatchAvatarImageLoaded();
+
+	void AcquireEventDataFrom(const AvatarImageLoaded_t& steamEventData);
+	virtual const char* GetLuaEventName() const;
+	virtual bool PushLuaEventTableTo(lua_State* luaStatePointer) const;
+
+private:
+	uint64 fUserIntegerId;
+	int fImage;
+	int fSize;
+};

@@ -221,6 +221,8 @@ class RuntimeContext
 		STEAM_CALLBACK(RuntimeContext, OnSteamUserStatsReceived, UserStatsReceived_t);
 		STEAM_CALLBACK(RuntimeContext, OnSteamUserStatsStored, UserStatsStored_t);
 		STEAM_CALLBACK(RuntimeContext, OnSteamUserStatsUnloaded, UserStatsUnloaded_t);
+		STEAM_CALLBACK(RuntimeContext, OnSteamAchievementIconFetched, UserAchievementIconFetched_t);
+		STEAM_CALLBACK(RuntimeContext, OnSteamAvatarImageLoaded, AvatarImageLoaded_t);
 
 
 		/**

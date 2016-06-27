@@ -1,6 +1,6 @@
 // --------------------------------------------------------------------------------
 // 
-// SteamworksLuaInterface.cpp
+// SteamImageWrapper.cpp
 // Copyright (c) 2016 Corona Labs Inc. All rights reserved.
 //
 // --------------------------------------------------------------------------------
@@ -13,6 +13,7 @@
 #include "PluginMacros.h"
 #include "RuntimeContext.h"
 #include "SteamStatValueType.h"
+#include "SteamImageWrapper.h"
 #include <cmath>
 #include <sstream>
 #include <stdint.h>
@@ -522,7 +523,7 @@ int OnGetUserInfo(lua_State* luaStatePointer)
 		}
 		else
 		{
-			lua_getfield(luaStatePointer, -1, "name");
+			lua_pushstring(luaStatePointer, "");
 		}
 		lua_setfield(luaStatePointer, -2, "nickname");
 	}
@@ -2325,6 +2326,325 @@ int OnSetUserStatValues(lua_State* luaStatePointer)
 	return 1;
 }
 
+
+/** number/nil steamworks.getUserAvatarImageId({[size="small|medium|large",] [userSteamId=""] }) */
+/** small = 32, medium = 64 and large is 184 pixels */
+int OnGetUserAvatar(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	CSteamID userSteamId;
+
+	enum{
+		avatarSmall, avatarMedium, avatarLarge
+	} avatarSize = avatarMedium;
+
+	if (lua_istable(luaStatePointer, 1))
+	{
+		//parsing optional userSteamID
+		{
+			const char kUserSteamIdFieldName[] = "userSteamId";
+			lua_getfield(luaStatePointer, 1, kUserSteamIdFieldName);
+			const char* userStringId = nullptr;
+			const auto luaArgumentType = lua_type(luaStatePointer, -1);
+			if (luaArgumentType == LUA_TSTRING)
+			{
+				userStringId = lua_tostring(luaStatePointer, -1);
+			}
+			else if ((luaArgumentType != LUA_TNONE) && (luaArgumentType != LUA_TNIL))
+			{
+				CoronaLuaError(luaStatePointer, "The '%s' field is not of type string.", kUserSteamIdFieldName);
+			}
+			if (userStringId)
+			{
+				uint64 integerId = 0;
+				std::stringstream stringStream;
+				stringStream.imbue(std::locale::classic());
+				stringStream << userStringId;
+				stringStream >> integerId;
+				if (!stringStream.fail())
+				{
+					userSteamId.SetFromUint64(integerId);
+				}
+				if (userSteamId.IsValid() == false)
+				{
+					CoronaLuaError(
+								   luaStatePointer, "Given '%s' value is invalid: '%s'", kUserSteamIdFieldName, userStringId);
+				}
+			}
+			lua_pop(luaStatePointer, 1);
+			if (userStringId && !userSteamId.IsValid())
+			{
+				lua_pushnil(luaStatePointer);
+				return 1;
+			}
+		}
+
+		// parsing optional requested Avatar size
+		{
+			const char kUserAvatarSizeFieldName[] = "size";
+			lua_getfield(luaStatePointer, 1, kUserAvatarSizeFieldName);
+			const auto luaArgumentType = lua_type(luaStatePointer, -1);
+			if (luaArgumentType == LUA_TSTRING)
+			{
+				const char *userAvatarSizeStr = lua_tostring(luaStatePointer, -1);
+				if (userAvatarSizeStr)
+				{
+					if(strcmp(userAvatarSizeStr, "small") == 0)
+					{
+						avatarSize = avatarSmall;
+					}
+					else if (strcmp(userAvatarSizeStr, "large") == 0)
+					{
+						avatarSize = avatarLarge;
+					}
+				}
+			}
+			else if ((luaArgumentType != LUA_TNONE) && (luaArgumentType != LUA_TNIL))
+			{
+				CoronaLuaError(luaStatePointer, "The '%s' field is not of type string.", kUserAvatarSizeFieldName);
+			}
+			lua_pop(luaStatePointer, 1);
+		}
+	}
+
+	// Fetch the Steam interface needed by this API call.
+	// Note: Will return null if Steam client is not currently running.
+	auto steamUserFriendsPointer = SteamFriends();
+	if (!steamUserFriendsPointer)
+	{
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	if ( !userSteamId.IsValid() )
+	{
+		auto steamUserPointer = SteamUser();
+		if (steamUserPointer)
+		{
+			userSteamId = steamUserPointer->GetSteamID();
+		}
+	}
+
+	if ( !userSteamId.IsValid() )
+	{
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	int image = 0;
+	switch (avatarSize)
+	{
+		case avatarSmall:
+			image = steamUserFriendsPointer->GetSmallFriendAvatar(userSteamId);
+			break;
+		case avatarMedium:
+			image = steamUserFriendsPointer->GetMediumFriendAvatar(userSteamId);
+			break;
+		case avatarLarge:
+			image = steamUserFriendsPointer->GetLargeFriendAvatar(userSteamId);
+			break;
+	}
+
+	lua_pushinteger(luaStatePointer, image);
+	return 1;
+}
+
+
+/** table steamworks.getAchievementImageId(achievementName) */
+int OnGetAchievementIcon(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	// Fetch the required achievement name argument.
+	const char* achievementName = nullptr;
+	if (lua_type(luaStatePointer, 1) == LUA_TSTRING)
+	{
+		achievementName = lua_tostring(luaStatePointer, 1);
+	}
+	if (!achievementName)
+	{
+		CoronaLuaError(luaStatePointer, "1st argument must be set to the achievement's unique name.");
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	auto steamUserStatsPointer = SteamUserStats();
+	if (!steamUserStatsPointer)
+	{
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	int image = steamUserStatsPointer->GetAchievementIcon(achievementName);
+	lua_pushinteger(luaStatePointer, image);
+
+	return 1;
+}
+
+/** DisplayObject steamworks.newImage(image) */
+int OnNewImage(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	int image = 0;
+	if (lua_type(luaStatePointer, 1) == LUA_TNUMBER)
+	{
+		image = (int)lua_tointeger(luaStatePointer, 1);
+	}
+	else
+	{
+		CoronaLuaError(luaStatePointer, "1st argument must be valid image identifier received from getAchievementIcon or getUserAvatar.");
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	if (image <= 0)
+	{
+		// this is invalid image identifier...
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	int textures = SteamImageWrapper::PushTexture(luaStatePointer, image);
+	if (textures != 1)
+	{
+		lua_pop(luaStatePointer, textures);
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	lua_getglobal(luaStatePointer, "display");
+	lua_getfield(luaStatePointer, -1,"newImage");
+	lua_remove(luaStatePointer, -2);
+	lua_getfield(luaStatePointer, -2, "filename");
+	lua_getfield(luaStatePointer, -3, "baseDir");
+
+	if(lua_pcall(luaStatePointer, 2, 1, 0) == 0)
+	{
+		lua_insert(luaStatePointer, -2);
+		lua_getfield(luaStatePointer, -1, "releaseSelf");
+		lua_insert(luaStatePointer, -2);
+		if(lua_pcall(luaStatePointer, 1, 0, 0) != 0)
+		{
+			// pop the error string
+			lua_pop(luaStatePointer, 1);
+			lua_pushnil(luaStatePointer);
+		}
+	}else
+	{
+		lua_pop(luaStatePointer, 1);
+		lua_pushnil(luaStatePointer);
+	}
+	return 1;
+}
+
+/** DisplayObject steamworks.newImage(image) */
+int OnNewTexture(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	int image = 0;
+	if (lua_type(luaStatePointer, 1) == LUA_TNUMBER)
+	{
+		image = (int)lua_tointeger(luaStatePointer, 1);
+	}
+	else
+	{
+		CoronaLuaError(luaStatePointer, "1st argument must be valid image identifier received from getAchievementIcon or getUserAvatar.");
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	if (image <= 0)
+	{
+		// this is invalid image identifier...
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	return SteamImageWrapper::PushTexture(luaStatePointer, image);
+}
+
+/** number steamworks.getNumAchievements(image) */
+int OnGetNumAchievements(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	auto steamUserStatsPointer = SteamUserStats();
+	if (!steamUserStatsPointer)
+	{
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	lua_pushinteger(luaStatePointer, steamUserStatsPointer->GetNumAchievements() );
+	return 1;
+}
+
+
+/** string steamworks.getAchievementName(number) */
+int OnGetAchievementName(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	auto steamUserStatsPointer = SteamUserStats();
+	if (!steamUserStatsPointer)
+	{
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	int num = -1;
+	if(lua_type(luaStatePointer, 1) == LUA_TNUMBER)
+	{
+		num = lua_tonumber(luaStatePointer, 1) - 1;
+	}
+
+	if(num< 0)
+	{
+		CoronaLuaError(luaStatePointer, "1st parameter must be valid achievement number (integer).");
+		lua_pushnil(luaStatePointer);
+		return 1;
+	}
+
+	const char* stringValue = steamUserStatsPointer->GetAchievementName(num);
+	if (stringValue && (stringValue[0] != '\0'))
+	{
+		lua_pushstring(luaStatePointer, stringValue );
+	}
+	else
+	{
+		lua_pushnil(luaStatePointer);
+	}
+
+	return 1;
+}
+
 /** steamworks.addEventListener(eventName, listener) */
 int OnAddEventListener(lua_State* luaStatePointer)
 {
@@ -2627,6 +2947,15 @@ CORONA_EXPORT int luaopen_plugin_steamworks(lua_State* luaStatePointer)
 			{ "showWebOverlay", OnShowWebOverlay },
 			{ "addEventListener", OnAddEventListener },
 			{ "removeEventListener", OnRemoveEventListener },
+
+			{ "getNumAchievements", OnGetNumAchievements },
+			{ "getAchievementName", OnGetAchievementName },
+
+			{ "getUserAvatarImageId", OnGetUserAvatar },
+			{ "getAchievementImageId", OnGetAchievementIcon },
+			{ "newImage", OnNewImage },
+			{ "newTexture", OnNewTexture },
+
 			{ nullptr, nullptr }
 		};
 		lua_createtable(luaStatePointer, 0, 0);

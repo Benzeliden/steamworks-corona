@@ -14,7 +14,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-	struct lua_State;
+	typedef struct lua_State lua_State;
 #ifdef __cplusplus
 }
 #endif
@@ -48,7 +48,6 @@ typedef enum {
 	 */
 	kExternalBitmapFormat_RGBA,
 	
-	kExternalBitmapFormat_NumFormats,
 } CoronaExternalBitmapFormat;
 
 
@@ -77,15 +76,22 @@ typedef enum {
  In order to create external bitmap you must provide width, height and bitmap callbacks
  all other are optional and will be ignored if set to NULL
 */
-struct CoronaExternalTextureCallbacks
+typedef struct CoronaExternalTextureCallbacks
 {
+	/**
+	 Required
+	 When creating instance of this type set this member to `size = sizeof(CoronaExternalTextureCallbacks)`.
+	 This is required for identifying version of API used.
+	*/
+	unsigned long size;
+	
 	/**
 	 Required
 	 called when Texture bitmap's width is required
 	 @param userData Pointer passed to CoronaExternalPushTexture
 	 @return The width of Texture's bitmap; Important: if it is a Mask, width should be a multiple of 4
 	*/
-	unsigned (*getWidth)(void* userData);
+	unsigned int (*getWidth)(void* userData);
 	
 	/**
 	 Required
@@ -93,7 +99,7 @@ struct CoronaExternalTextureCallbacks
 	 @param userData Pointer passed to CoronaExternalPushTexture
 	 @return The width of Texture's height
 	*/
-	unsigned (*getHeight)(void* userData);
+	unsigned int (*getHeight)(void* userData);
 	
 	/**
 	 Required
@@ -142,7 +148,7 @@ struct CoronaExternalTextureCallbacks
 	 @return number of values pushed on Lua stack
 	*/
 	int (*onGetField)(lua_State *L, const char *field, void* userData);   // optional; called Lua texture property lookup
-};
+} CoronaExternalTextureCallbacks;
 
 // C API
 // ----------------------------------------------------------------------------

@@ -1,0 +1,35 @@
+settings =
+{
+	orientation =
+	{
+		default = "landscapeLeft",
+		supported =
+		{
+			"portrait", "landscapeLeft", "landscapeRight", "portraitUpsideDown"
+		},
+	},
+	window =
+	{
+--		defaultMode = "fullscreen",
+		minViewWidth = 320,
+		minViewHeight = 480,
+		resizable = true,
+--		enableCloseButton = false,
+		enableMinimizeButton = true,
+		enableMaximizeButton = true,
+		suspendWhenMinimized = true,
+		titleText =
+		{
+			default = "Resize Test",
+			["EN"] = "Resize Test (English)",
+			["en-US"] = "Resize Test (English-USA)",
+		},
+	},
+	plugins =
+	{
+		["plugin.steamworks"] =
+		{
+			publisherId = "com.coronalabs",
+		}
+	},
+}

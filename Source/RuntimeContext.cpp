@@ -275,3 +275,13 @@ void RuntimeContext::OnSteamUserStatsUnloaded(UserStatsUnloaded_t* eventDataPoin
 {
 	OnHandleGlobalSteamEvent<UserStatsUnloaded_t, DispatchUserStatsUnloadedEventTask>(eventDataPointer);
 }
+
+void RuntimeContext::OnSteamAchievementIconFetched(UserAchievementIconFetched_t* eventDataPointer)
+{
+	OnHandleGlobalSteamEvent<UserAchievementIconFetched_t, DispatchAchievementIconFetched>(eventDataPointer);
+}
+
+void RuntimeContext::OnSteamAvatarImageLoaded(AvatarImageLoaded_t* eventDataPointer)
+{
+	OnHandleGlobalSteamEvent<AvatarImageLoaded_t, DispatchAvatarImageLoaded>(eventDataPointer);
+}
