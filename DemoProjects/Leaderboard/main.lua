@@ -38,7 +38,7 @@ local function onRowRender( event )
 		y = h*0.5,
 		x = 40,
 		text = tostring( params.rank ),
-		align = "right"
+		align = "right",
 	} )
 	t:setFillColor( {0,0,} )
 	t:translate( -t.width*0.5, 0 )
@@ -65,7 +65,7 @@ local function onRowRender( event )
 		y = h*0.5,
 		x = 40 + imgDims + 10,
 		text = params.name,
-		align = "left"
+		align = "left",
 	} )
 	t:setFillColor( {0,0,} )
 	t:translate( t.width*0.5, 0 )
@@ -76,7 +76,7 @@ local function onRowRender( event )
 		x = w-10,
 		text = tostring(params.score),
 		align = "right",
-		font = "Courier New"
+		font = "Courier New",
 	} )
 	t:setFillColor( {0,0,} )
 	t:translate( -t.width*0.5, 0 )
@@ -163,9 +163,19 @@ end
 
 
 local function requestLeaderboard( )
+	local startIndex = nil
+	local endIndex = nil
+	if scope == "Global" then
+		startIndex = 1 + perPage * (page - 1)
+		endIndex = perPage * page
+	else
+		startIndex = math.floor(perPage / 2) * -1
+		endIndex = math.floor(perPage / 2)
+	end
 	if steamworks.requestLeaderboardEntries({
 		leaderboardName = "Feet Traveled",
-		range = { 1+perPage*(page-1), perPage*page },
+		startIndex = startIndex,
+		endIndex = endIndex,
 		listener = leaderboardLoaded,
 		playerScope = scope,
 	}) then
@@ -220,28 +230,6 @@ local sizeSegment = widget.newSegmentedControl {
     onPress = imageSize
 }
 
--- scope controls
-
-local function leaderboardScope( event )
-	local segNum = event.target.segmentNumber
-	if segNum == 1 then
-		scope = "Global"
-	elseif segNum == 2 then
-		scope = "GlobalAroundUser"
-	elseif segNum == 3 then
-		scope = "FriendsOnly"
-	end
-	requestLeaderboard()
-end
-
-local scopeSegment = widget.newSegmentedControl {
-    segments = { "Global", "Local", "Friends" },
-    defaultSegment = 1,
-	segmentWidth = 55,
-    onPress = leaderboardScope
-}
-
-
 -- page controls
 
 local function pageListener( event )
@@ -257,6 +245,29 @@ local pageStepper = widget.newStepper {
 	changeSpeedAtIncrement = 1,
     onPress = pageListener
 }
+
+-- scope controls
+
+local function leaderboardScope( event )
+	local segNum = event.target.segmentNumber
+	if segNum == 1 then
+		scope = "Global"
+	elseif segNum == 2 then
+		scope = "GlobalAroundUser"
+	elseif segNum == 3 then
+		scope = "FriendsOnly"
+	end
+	pageStepper.isVisible = (scope ~= "GlobalAroundUser")
+	requestLeaderboard()
+end
+
+local scopeSegment = widget.newSegmentedControl {
+    segments = { "Global", "Me", "Friends" },
+    defaultSegment = 1,
+	segmentWidth = 55,
+    onPress = leaderboardScope
+}
+
 
 local function reLayout( )
 	leaderboardTable.width = display.contentWidth

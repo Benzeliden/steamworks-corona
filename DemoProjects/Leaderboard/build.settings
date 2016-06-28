@@ -2,27 +2,21 @@ settings =
 {
 	orientation =
 	{
-		default = "landscapeLeft",
+		default = "landscapeRight",
 		supported =
 		{
-			"portrait", "landscapeLeft", "landscapeRight", "portraitUpsideDown"
+			"landscapeLeft", "landscapeRight",
 		},
 	},
 	window =
 	{
---		defaultMode = "fullscreen",
-		minViewWidth = 320,
-		minViewHeight = 480,
-		resizable = true,
---		enableCloseButton = false,
-		enableMinimizeButton = true,
-		enableMaximizeButton = true,
-		suspendWhenMinimized = true,
+		viewWidth = 960,
+		viewHeight = 640,
+		minViewWidth = 960,
+		minViewHeight = 640,
 		titleText =
 		{
-			default = "Resize Test",
-			["EN"] = "Resize Test (English)",
-			["en-US"] = "Resize Test (English-USA)",
+			default = "Steam Leaderboard Test",
 		},
 	},
 	plugins =
@@ -30,6 +24,6 @@ settings =
 		["plugin.steamworks"] =
 		{
 			publisherId = "com.coronalabs",
-		}
+		},
 	},
 }
