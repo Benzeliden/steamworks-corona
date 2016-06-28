@@ -834,7 +834,12 @@ int OnRequestActivePlayerCount(lua_State* luaStatePointer)
 	return 1;
 }
 
-/** bool steamworks.requestLeaderboardEntries({leaderboardName="", listener=myListener, [playerScope="", range={}]}) */
+/**
+	bool steamworks.requestLeaderboardEntries(
+	{
+		leaderboardName="", listener=myListener [,playerScope=""] [,startIndex=x, endIndex=y]
+	})
+ */
 int OnRequestLeaderboardEntries(lua_State* luaStatePointer)
 {
 	// Validate.
@@ -896,67 +901,6 @@ int OnRequestLeaderboardEntries(lua_State* luaStatePointer)
 		}
 	}
 
-	// Fetch the optional entry range from the Lua table.
-	// Note: Indexing is 1-based in Steam, just like Lua.
-	int rangeStartIndex = 1;
-	int rangeEndIndex = 25;
-	{
-		const char kRangeFieldName[] = "range";
-		lua_getfield(luaStatePointer, 1, kRangeFieldName);
-		const auto luaValueType = lua_type(luaStatePointer, -1);
-		if ((luaValueType != LUA_TNONE) && (luaValueType != LUA_TNIL))
-		{
-			rangeStartIndex = -1;
-			rangeEndIndex = -1;
-			if (luaValueType == LUA_TTABLE)
-			{
-				if (lua_objlen(luaStatePointer, -1) == 2)
-				{
-					auto lambda = [](
-						lua_State* luaStatePointer, const char* rangeFieldName, int arrayIndex, int& outRangeIndex)
-					{
-						lua_rawgeti(luaStatePointer, -1, arrayIndex);
-						if (lua_type(luaStatePointer, -1) == LUA_TNUMBER)
-						{
-							outRangeIndex = lua_tointeger(luaStatePointer, -1);
-							if (outRangeIndex < 1)
-							{
-								outRangeIndex = 1;
-							}
-						}
-						else
-						{
-							const char* kMessage = "'%s' array element [%d] is not of type number.";
-							CoronaLuaError(luaStatePointer, kMessage, rangeFieldName, arrayIndex);
-						}
-						lua_pop(luaStatePointer, 1);
-					};
-					lambda(luaStatePointer, kRangeFieldName, 1, rangeStartIndex);
-					lambda(luaStatePointer, kRangeFieldName, 2, rangeEndIndex);
-					if (rangeEndIndex < rangeStartIndex)
-					{
-						rangeEndIndex = rangeStartIndex;
-					}
-				}
-				else
-				{
-					const char* kMessage = "The '%s' field must be an array containing 2 numbers.";
-					CoronaLuaError(luaStatePointer, kMessage, kRangeFieldName);
-				}
-			}
-			else
-			{
-				CoronaLuaError(luaStatePointer, "The '%s' field must be of type array.", kRangeFieldName);
-			}
-		}
-		lua_pop(luaStatePointer, 1);
-		if ((rangeStartIndex < 1) || (rangeEndIndex < 1))
-		{
-			lua_pushboolean(luaStatePointer, 0);
-			return 1;
-		}
-	}
-
 	// Fetch the optional player scope from the Lua table.
 	ELeaderboardDataRequest playerScope = k_ELeaderboardDataRequestGlobal;
 	{
@@ -981,15 +925,18 @@ int OnRequestLeaderboardEntries(lua_State* luaStatePointer)
 		{
 			if (scopeName)
 			{
-				if (!strcmp(scopeName, "Global"))
+				std::string lowercaseScopeName(scopeName);
+				std::transform(
+						lowercaseScopeName.begin(), lowercaseScopeName.end(), lowercaseScopeName.begin(), ::tolower);
+				if (!strcmp(lowercaseScopeName.c_str(), "global"))
 				{
 					playerScope = k_ELeaderboardDataRequestGlobal;
 				}
-				else if (!strcmp(scopeName, "GlobalAroundUser"))
+				else if (!strcmp(lowercaseScopeName.c_str(), "globalarounduser"))
 				{
 					playerScope = k_ELeaderboardDataRequestGlobalAroundUser;
 				}
-				else if (!strcmp(scopeName, "FriendsOnly"))
+				else if (!strcmp(lowercaseScopeName.c_str(), "friendsonly"))
 				{
 					playerScope = k_ELeaderboardDataRequestFriends;
 				}
@@ -1003,6 +950,109 @@ int OnRequestLeaderboardEntries(lua_State* luaStatePointer)
 			{
 				lua_pushboolean(luaStatePointer, 0);
 				return 1;
+			}
+		}
+	}
+
+	// Fetch the optional "startIndex" and "endIndex" entry range from the Lua table.
+	// Note 1: Indexing is 1-based on Steam, just like Lua.
+	// Note 2: Steam ignores the index range when fetching entries for "FriendsOnly" player scope.
+	int rangeStartIndex = 0;
+	int rangeEndIndex = 0;
+	if (playerScope != k_ELeaderboardDataRequestFriends)
+	{
+		// Fetch the range index fields.
+		bool hasRangeStartIndex = false;
+		bool hasRangeEndIndex = false;
+		{
+			bool hasError = false;
+			lua_getfield(luaStatePointer, 1, "startIndex");
+			const auto luaValueType = lua_type(luaStatePointer, -1);
+			if (luaValueType == LUA_TNUMBER)
+			{
+				rangeStartIndex = lua_tointeger(luaStatePointer, -1);
+				hasRangeStartIndex = true;
+			}
+			else if ((luaValueType != LUA_TNIL) && (luaValueType != LUA_TNONE))
+			{
+				CoronaLuaError(luaStatePointer, "The 'startIndex' field must be of type number.");
+				hasError = true;
+			}
+			lua_pop(luaStatePointer, 1);
+			if (hasError)
+			{
+				lua_pushboolean(luaStatePointer, 0);
+				return 1;
+			}
+		}
+		{
+			bool hasError = false;
+			lua_getfield(luaStatePointer, 1, "endIndex");
+			const auto luaValueType = lua_type(luaStatePointer, -1);
+			if (luaValueType == LUA_TNUMBER)
+			{
+				rangeEndIndex = lua_tointeger(luaStatePointer, -1);
+				hasRangeEndIndex = true;
+			}
+			else if ((luaValueType != LUA_TNIL) && (luaValueType != LUA_TNONE))
+			{
+				CoronaLuaError(luaStatePointer, "The 'endIndex' field must be of type number.");
+				hasError = true;
+			}
+			lua_pop(luaStatePointer, 1);
+			if (hasError)
+			{
+				lua_pushboolean(luaStatePointer, 0);
+				return 1;
+			}
+		}
+
+		// Validate the fetch indexes, if acquired.
+		if (hasRangeStartIndex != hasRangeEndIndex)
+		{
+			// We do not allow only 1 index field to be provided.
+			// As in, the developer must provide both start/end index fields or neither.
+			if (hasRangeStartIndex)
+			{
+				CoronaLuaError(luaStatePointer, "The 'endIndex' field is missing.");
+			}
+			else
+			{
+				CoronaLuaError(luaStatePointer, "The 'startIndex' field is missing.");
+			}
+			lua_pushboolean(luaStatePointer, 0);
+			return 1;
+		}
+		else if (hasRangeStartIndex && hasRangeEndIndex)
+		{
+			// Both start/end index fields were provided. Make sure they're valid.
+			if ((k_ELeaderboardDataRequestGlobal == playerScope) && (rangeStartIndex < 1))
+			{
+				// Floor start index to 1 (the minimum allowed) for global entry lookup.
+				rangeStartIndex = 1;
+			}
+			if (rangeEndIndex < rangeStartIndex)
+			{
+				// Never let the end index be lower than the start index.
+				rangeEndIndex = rangeStartIndex;
+			}
+		}
+		else
+		{
+			// Index fields we're not provided. Set them to their defaults based on player scope setting.
+			if (k_ELeaderboardDataRequestGlobal == playerScope)
+			{
+				// We use absolute indexes when fetching with a "Global" scope.
+				// This means top score is index 1. Indexes less than 1 are invalid.
+				rangeStartIndex = 1;
+				rangeEndIndex = 25;
+			}
+			else if (k_ELeaderboardDataRequestGlobalAroundUser == playerScope)
+			{
+				// Indexes are relative to logged in user for "GlobalAroundUser" scope.
+				// This means index zero is the logged in user and negative indexes are users with higher scores.
+				rangeStartIndex = -12;
+				rangeEndIndex = 12;
 			}
 		}
 	}
@@ -2034,7 +2084,7 @@ int OnShowUserOverlay(lua_State* luaStatePointer)
 	}
 
 	// Fetch optional overlay name argument.
-	const char* overlayName = nullptr;
+	const char* overlayName = "steamid";
 	{
 		const auto luaArgumentType = lua_type(luaStatePointer, 2);
 		if (luaArgumentType == LUA_TSTRING)
