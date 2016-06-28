@@ -2672,7 +2672,7 @@ int OnGetAchievementName(lua_State* luaStatePointer)
 	int num = -1;
 	if(lua_type(luaStatePointer, 1) == LUA_TNUMBER)
 	{
-		num = lua_tonumber(luaStatePointer, 1) - 1;
+		num = lua_tointeger(luaStatePointer, 1) - 1;
 	}
 
 	if(num< 0)
