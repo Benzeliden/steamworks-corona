@@ -101,8 +101,10 @@ copy /y "..\Dependencies\Steam\redistributable_bin\steam_api.dll" "$(APPDATA)\Co
     <ClCompile Include="LuaEventDispatcher.cpp" />
     <ClCompile Include="PluginConfigLuaSettings.cpp" />
     <ClCompile Include="RuntimeContext.cpp" />
+    <ClCompile Include="SteamImageInfo.cpp" />
     <ClCompile Include="SteamStatValueType.cpp" />
     <ClCompile Include="SteamImageWrapper.cpp" />
+    <ClCompile Include="SteamUserImageType.cpp" />
     <ClCompile Include="SteamworksLuaInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -114,8 +116,10 @@ copy /y "..\Dependencies\Steam\redistributable_bin\steam_api.dll" "$(APPDATA)\Co
     <ClInclude Include="PluginMacros.h" />
     <ClInclude Include="RuntimeContext.h" />
     <ClInclude Include="SteamCallResultHandler.h" />
+    <ClInclude Include="SteamImageInfo.h" />
     <ClInclude Include="SteamStatValueType.h" />
     <ClInclude Include="SteamImageWrapper.h" />
+    <ClInclude Include="SteamUserImageType.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

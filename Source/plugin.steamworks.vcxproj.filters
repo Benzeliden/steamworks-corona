@@ -9,6 +9,8 @@
     <ClCompile Include="SteamStatValueType.cpp" />
     <ClCompile Include="SteamImageWrapper.cpp" />
     <ClCompile Include="PluginConfigLuaSettings.cpp" />
+    <ClCompile Include="SteamImageInfo.cpp" />
+    <ClCompile Include="SteamUserImageType.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LuaEventDispatcher.h" />
@@ -21,5 +23,7 @@
     <ClInclude Include="SteamStatValueType.h" />
     <ClInclude Include="SteamImageWrapper.h" />
     <ClInclude Include="PluginConfigLuaSettings.h" />
+    <ClInclude Include="SteamImageInfo.h" />
+    <ClInclude Include="SteamUserImageType.h" />
   </ItemGroup>
 </Project>

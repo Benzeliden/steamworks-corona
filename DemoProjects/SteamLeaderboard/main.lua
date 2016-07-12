@@ -5,14 +5,53 @@ local widget = require('widget')
 local page = 1
 local perPage = 15
 local scope = "Global"
-local imgSize = "small"
-local rowHeight = 18
+local imgSize = "smallAvatar"
 
 transition.to( display.newGroup( ), {x=100, iterations=-1} )
 
-
 display.setStatusBar( display.HiddenStatusBar )
 
+
+-- Do not continue if failed to find a logged in Steam user.
+-- This means the Steam client is not running or the user is not logged in to it.
+if steamworks.isLoggedOn == false then
+	-- Handle the native alert's result displayed down below.
+	local function onAlertHandler( event )
+		-- If the user clicked the "Log In" button,
+		-- then display the Steam client via its custom URL scheme.
+		if ( event.action == "clicked" ) and ( event.index == 1 ) then
+			system.openURL( "steam:" )
+		end
+
+		-- Exit this app, regardless of which button was pressed.
+		-- The Steam client must be running when this app starts up.
+		native.requestExit()
+	end
+
+	-- Display a native alert asking the user to log into Steam.
+	local message =
+			"You must log into Steam in order to play this game.\n" ..
+			"After logging in, you must then relaunch this app."
+	native.showAlert( "Warning", message, { "Log In", "Close" }, onAlertHandler )
+
+	-- Exit out of the "main.lua" file.
+	-- The screen will be black. Only the above native alert will be shown on top.
+	return
+end
+
+
+local function getAvatarSize()
+	local pixelSize
+	if imgSize == "smallAvatar" then
+		pixelSize = 32
+	elseif imgSize == "mediumAvatar" then
+		pixelSize = 64
+	else
+		pixelSize = 184
+	end
+	return pixelSize * display.contentScaleY
+end
+local rowHeight = getAvatarSize()
 
 
 local function onRowRender( event )
@@ -44,16 +83,26 @@ local function onRowRender( event )
 	t:translate( -t.width*0.5, 0 )
 
 	local obj
-	local imgDims = rowHeight-2
+	local imgDims = getAvatarSize()
+
 	if params.rank == 1 then
 		obj = display.newCircle( row, 0, 0, imgDims*0.5 )
 	else
 		obj = display.newRect( row, 0, 0, imgDims, imgDims )
 	end
-	if params.img and params.img > 0 then
-		local tex = steamworks.newTexture(params.img)
-		obj.fill = { type="image", filename=tex.filename, baseDir=tex.baseDir }
-		tex:releaseSelf()
+	if params.texture == nil then
+		local imageInfo = steamworks.getUserImageInfo( imgSize, params.user )
+		if imageInfo then
+			params.texture = steamworks.newTexture( imageInfo.imageHandle )
+		end
+	end
+	if params.texture then
+		obj.fill =
+		{
+			type = "image",
+			filename = params.texture.filename,
+			baseDir = params.texture.baseDir,
+		}
 	else
 		obj.fill = {0.5}
 	end
@@ -85,22 +134,38 @@ end
 local leaderboardTable
 
 
--- steam will produce this event onlyf or "large" image size
-local function avatarFetched(event)	
-	-- print(require("json").prettify(event))
-	for i=1,leaderboardTable:getNumRows() do
-		local row = leaderboardTable:getRowAtIndex(i)
-		if row and row.params and row.params.user == event.userSteamId then
-			local params = row.params
-			params.img = event.imageId
-			local tex = steamworks.newTexture(params.img)
-			params.obj.fill = {type="image", filename=tex.filename, baseDir=tex.baseDir}
-			tex:releaseSelf()
-			break
+local function onUserInfoUpdated(event)
+	if ( imgSize == "smallAvatar" and event.smallAvatarChanged ) or
+	   ( imgSize == "mediumAvatar" and event.mediumAvatarChanged ) or
+	   ( imgSize == "largeAvatar" and event.largeAvatarChanged )
+	then
+		for i=1,leaderboardTable:getNumRows() do
+			local row = leaderboardTable:getRowAtIndex(i)
+			if row and row.params and row.params.user == event.userSteamId then
+				local params = row.params
+				local imageInfo = steamworks.getUserImageInfo( imgSize, event.userSteamId )
+				if imageInfo then
+					local newTexture = steamworks.newTexture( imageInfo.imageHandle )
+					if newTexture then
+						if params.texture then
+							params.texture:releaseSelf()
+						end
+						params.texture = newTexture
+
+						params.obj.fill =
+						{
+							type = "image",
+							filename = params.texture.filename,
+							baseDir = params.texture.baseDir
+						}
+					end
+				end
+				break
+			end
 		end
 	end
 end
-steamworks.addEventListener("avatarFetched", avatarFetched)
+steamworks.addEventListener("userInfoUpdate", onUserInfoUpdated)
 
 
 local function leaderboardLoaded(event)
@@ -138,10 +203,14 @@ local function leaderboardLoaded(event)
 
 	for i=1,#event.entries do
 		local e = event.entries[i]
-		local img = steamworks.getUserAvatarImageId({userSteamId=e.userSteamId, size=imgSize})
+		local imageHandle = nil
+		local imageInfo = steamworks.getUserImageInfo(imgSize, e.userSteamId)
+		if imageInfo then
+			imageHandle = imageInfo.imageHandle
+		end
 		local userInfo = steamworks.getUserInfo(e.userSteamId)
 		local name = "[unknown]"
-		if userInfo and userInfo.name then
+		if userInfo then
 			name = userInfo.name
 			if userInfo.nickname ~= "" then
 				name = name .. " (" .. userInfo.nickname ..")"
@@ -150,7 +219,7 @@ local function leaderboardLoaded(event)
 		leaderboardTable:insertRow( {
 			rowHeight=rowHeight, 
 			params={ 
-				img = img or 0,
+				img = imageHandle,
 				rank = e.globalRank,
 				score = e.score,
 				steamId = e.userSteamId,
@@ -158,6 +227,16 @@ local function leaderboardLoaded(event)
 				user = e.userSteamId,
 			}
 		} )
+		local row = leaderboardTable:getRowAtIndex( i )
+		if row then
+			function row:finalize( event )
+				if self.params.texture then
+					self.params.texture:releaseSelf()
+					self.params.texture = nil
+				end
+			end
+			row:addEventListener( "finalize" )
+		end
 	end
 end
 
@@ -195,7 +274,7 @@ end
 local function onRowTouch( event )
 	local phase = event.phase
 	local row = event.target
-	if ( "release" == phase ) then
+	if ( "release" == phase ) and row.params.user then
 		steamworks.showWebOverlay( "http://steamcommunity.com/profiles/" .. row.params.user )
 	end
 end
@@ -204,6 +283,10 @@ end
 leaderboardTable = widget.newTableView({
 	onRowRender = onRowRender,
 	onRowTouch = onRowTouch,
+	x = display.contentCenterX,
+	y = display.contentCenterY - 20,
+	width = display.actualContentWidth,
+	height = display.actualContentHeight - 40,
 })
 
 -- image size control
@@ -211,15 +294,16 @@ leaderboardTable = widget.newTableView({
 local function imageSize( event )
 	local size = event.target.segmentNumber
 	if size == 1 then
-		imgSize = "small"
-		rowHeight = 18
+		imgSize = "smallAvatar"
+--		rowHeight = 18
 	elseif size == 2 then
-		imgSize = "medium"
-		rowHeight = 36
+		imgSize = "mediumAvatar"
+--		rowHeight = 36
 	elseif size == 3 then
-		imgSize = "large"
-		rowHeight = 54
+		imgSize = "largeAvatar"
+--		rowHeight = 54
 	end
+	rowHeight = getAvatarSize() * 1.25
 	requestLeaderboard()
 end
 
@@ -229,6 +313,8 @@ local sizeSegment = widget.newSegmentedControl {
 	segmentWidth = 55,
     onPress = imageSize
 }
+sizeSegment.x = ( sizeSegment.width * 0.5 ) + 10
+sizeSegment.y = display.contentHeight - 20
 
 -- page controls
 
@@ -243,7 +329,9 @@ local pageStepper = widget.newStepper {
     maximumValue = 200,
 	timerIncrementSpeed = 2000,
 	changeSpeedAtIncrement = 1,
-    onPress = pageListener
+    onPress = pageListener,
+	x = display.contentCenterX,
+	y = display.contentHeight - 20,
 }
 
 -- scope controls
@@ -265,30 +353,11 @@ local scopeSegment = widget.newSegmentedControl {
     segments = { "Global", "Me", "Friends" },
     defaultSegment = 1,
 	segmentWidth = 55,
-    onPress = leaderboardScope
+    onPress = leaderboardScope,
 }
-
-
-local function reLayout( )
-	leaderboardTable.width = display.contentWidth
-	leaderboardTable.height = display.contentHeight - 40
-	leaderboardTable.x = display.contentCenterX
-	leaderboardTable.y = display.contentCenterY - 20
-	sizeSegment.x = sizeSegment.width*0.5 + 10
-	sizeSegment.y = display.contentHeight-20
-	scopeSegment.x = display.contentWidth - scopeSegment.width*0.5 - 10
-	scopeSegment.y = display.contentHeight-20
-	pageStepper.x = display.contentCenterX
-	pageStepper.y = display.contentHeight-20
-end
-
-reLayout()
-Runtime:addEventListener( "resize", reLayout )
+scopeSegment.x = ( display.contentWidth - ( scopeSegment.width * 0.5 ) ) - 10
+scopeSegment.y = display.contentHeight - 20
 
 
 requestLeaderboard()
-
-
-
-
 

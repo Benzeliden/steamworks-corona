@@ -10,13 +10,12 @@ settings =
 	},
 	window =
 	{
-		viewWidth = 960,
-		viewHeight = 640,
 		minViewWidth = 960,
 		minViewHeight = 640,
+		suspendWhenMinimized = true,
 		titleText =
 		{
-			default = "Steam Leaderboard Test",
+			default = "steamworks.newImageRect() Test",
 		},
 	},
 	plugins =
@@ -24,6 +23,6 @@ settings =
 		["plugin.steamworks"] =
 		{
 			publisherId = "com.coronalabs",
-		},
+		}
 	},
 }

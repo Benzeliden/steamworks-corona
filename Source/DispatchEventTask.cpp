@@ -7,6 +7,7 @@
 
 #include "DispatchEventTask.h"
 #include "CoronaLua.h"
+#include "SteamImageInfo.h"
 #include <sstream>
 #include <string>
 
@@ -639,7 +640,8 @@ const char DispatchPersonaStateChangedEventTask::kLuaEventName[] = "userInfoUpda
 
 DispatchPersonaStateChangedEventTask::DispatchPersonaStateChangedEventTask()
 :	fUserIntegerId(0),
-	fFlags(0)
+	fFlags(0),
+	fHasLargeAvatarChanged(false)
 {
 }
 
@@ -649,8 +651,48 @@ DispatchPersonaStateChangedEventTask::~DispatchPersonaStateChangedEventTask()
 
 void DispatchPersonaStateChangedEventTask::AcquireEventDataFrom(const PersonaStateChange_t& steamEventData)
 {
+	// Copy event data.
 	fUserIntegerId = steamEventData.m_ulSteamID;
 	fFlags = steamEventData.m_nChangeFlags;
+	fHasLargeAvatarChanged = false;
+
+	// If the small/medium avatar images have been unloaded, then flag the large avatar as unloaded/changed too.
+	if (fFlags & k_EPersonaChangeAvatar)
+	{
+		auto steamFriendsPointer = SteamFriends();
+		if (steamFriendsPointer)
+		{
+			int imageHandle = steamFriendsPointer->GetSmallFriendAvatar(CSteamID(fUserIntegerId));
+			if (0 == imageHandle)
+			{
+				fHasLargeAvatarChanged = true;
+			}
+		}
+	}
+}
+
+void DispatchPersonaStateChangedEventTask::AcquireEventDataFrom(const AvatarImageLoaded_t& steamEventData)
+{
+	fUserIntegerId = steamEventData.m_steamID.ConvertToUint64();
+	fFlags = 0;
+	fHasLargeAvatarChanged = false;
+	auto imageInfo = SteamImageInfo::FromImageHandle(steamEventData.m_iImage);
+	if (imageInfo.IsValid())
+	{
+		if (imageInfo.GetPixelWidth() >= 184)
+		{
+			fHasLargeAvatarChanged = true;
+		}
+		else
+		{
+			fFlags |= k_EPersonaChangeAvatar;
+		}
+	}
+}
+
+void DispatchPersonaStateChangedEventTask::SetHasLargeAvatarChanged(bool value)
+{
+	fHasLargeAvatarChanged = value;
 }
 
 const char* DispatchPersonaStateChangedEventTask::GetLuaEventName() const
@@ -690,8 +732,15 @@ bool DispatchPersonaStateChangedEventTask::PushLuaEventTableTo(lua_State* luaSta
 		lua_setfield(luaStatePointer, -2, "statusChanged");
 	}
 	{
-		lua_pushboolean(luaStatePointer, (fFlags & k_EPersonaChangeAvatar) ? 1 : 0);
-		lua_setfield(luaStatePointer, -2, "avatarChanged");
+		bool hasAvatarChanged = (fFlags & k_EPersonaChangeAvatar) ? true : false;
+		lua_pushboolean(luaStatePointer, hasAvatarChanged ? 1 : 0);
+		lua_setfield(luaStatePointer, -2, "smallAvatarChanged");
+		lua_pushboolean(luaStatePointer, hasAvatarChanged ? 1 : 0);
+		lua_setfield(luaStatePointer, -2, "mediumAvatarChanged");
+	}
+	{
+		lua_pushboolean(luaStatePointer, fHasLargeAvatarChanged ? 1 : 0);
+		lua_setfield(luaStatePointer, -2, "largeAvatarChanged");
 	}
 	{
 		lua_pushboolean(luaStatePointer, (fFlags & k_EPersonaChangeRelationshipChanged) ? 1 : 0);
@@ -714,10 +763,78 @@ bool DispatchPersonaStateChangedEventTask::PushLuaEventTableTo(lua_State* luaSta
 
 
 //---------------------------------------------------------------------------------
+// DispatchUserAchievementIconFetchedEventTask Class Members
+//---------------------------------------------------------------------------------
+
+const char DispatchUserAchievementIconFetchedEventTask::kLuaEventName[] = "achievementImageUpdate";
+
+DispatchUserAchievementIconFetchedEventTask::DispatchUserAchievementIconFetchedEventTask()
+:	fIsUnlocked(false),
+	fImageHandle(0)
+{
+}
+
+DispatchUserAchievementIconFetchedEventTask::~DispatchUserAchievementIconFetchedEventTask()
+{
+}
+
+void DispatchUserAchievementIconFetchedEventTask::AcquireEventDataFrom(
+	const UserAchievementIconFetched_t& steamEventData)
+{
+	fAchievementName = steamEventData.m_rgchAchievementName;
+	fIsUnlocked = steamEventData.m_bAchieved;
+	fImageHandle = steamEventData.m_nIconHandle;
+}
+
+const char* DispatchUserAchievementIconFetchedEventTask::GetLuaEventName() const
+{
+	return kLuaEventName;
+}
+
+bool DispatchUserAchievementIconFetchedEventTask::PushLuaEventTableTo(lua_State* luaStatePointer) const
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return false;
+	}
+
+	// Do not continue if unable to fetch image information.
+	// Note: This can only happen if we're pushing this event to Lua long after the event was received
+	//       from Steam and Steam has already unloaded the image from the cache.
+	auto imageInfo = SteamImageInfo::FromImageHandle(fImageHandle);
+	if (imageInfo.IsNotValid())
+	{
+		return false;
+	}
+
+	// Push the event data to Lua.
+	CoronaLuaNewEvent(luaStatePointer, kLuaEventName);
+	{
+		lua_pushstring(luaStatePointer, fAchievementName.empty() ? "" : fAchievementName.c_str());
+		lua_setfield(luaStatePointer, -2, "achievementName");
+	}
+	{
+		bool wasPushed = imageInfo.PushToLua(luaStatePointer);
+		if (!wasPushed)
+		{
+			lua_createtable(luaStatePointer, 0, 0);
+		}
+		lua_setfield(luaStatePointer, -2, "imageInfo");
+	}
+	{
+		lua_pushboolean(luaStatePointer, fIsUnlocked ? 1 : 0);
+		lua_setfield(luaStatePointer, -2, "unlocked");
+	}
+	return true;
+}
+
+
+//---------------------------------------------------------------------------------
 // DispatchUserAchievementStoredEventTask Class Members
 //---------------------------------------------------------------------------------
 
-const char DispatchUserAchievementStoredEventTask::kLuaEventName[] = "achievementUpdate";
+const char DispatchUserAchievementStoredEventTask::kLuaEventName[] = "achievementInfoUpdate";
 
 DispatchUserAchievementStoredEventTask::DispatchUserAchievementStoredEventTask()
 :	fIsGroup(false),
@@ -940,117 +1057,6 @@ bool DispatchUserStatsUnloadedEventTask::PushLuaEventTableTo(lua_State* luaState
 		auto stringResult = stringStream.str();
 		lua_pushstring(luaStatePointer, stringResult.c_str());
 		lua_setfield(luaStatePointer, -2, "userSteamId");
-	}
-	return true;
-}
-
-
-
-//---------------------------------------------------------------------------------
-// DispatchAchievementIconFetched Class Members
-//---------------------------------------------------------------------------------
-
-const char DispatchAchievementIconFetched::kLuaEventName[] = "achivementIconFetched";
-
-DispatchAchievementIconFetched::DispatchAchievementIconFetched()
-:	fAchieved(false)
-,	fImage(0)
-{
-}
-
-DispatchAchievementIconFetched::~DispatchAchievementIconFetched()
-{
-}
-
-void DispatchAchievementIconFetched::AcquireEventDataFrom(const UserAchievementIconFetched_t& steamEventData)
-{
-	fAchievementName = steamEventData.m_rgchAchievementName;
-	fAchieved = steamEventData.m_bAchieved;
-	fImage = steamEventData.m_nIconHandle;
-}
-
-const char* DispatchAchievementIconFetched::GetLuaEventName() const
-{
-	return kLuaEventName;
-}
-
-bool DispatchAchievementIconFetched::PushLuaEventTableTo(lua_State* luaStatePointer) const
-{
-	// Validate.
-	if (!luaStatePointer)
-	{
-		return false;
-	}
-
-	// Push the event data to Lua.
-	CoronaLuaNewEvent(luaStatePointer, kLuaEventName);
-	{
-		lua_pushstring(luaStatePointer, fAchievementName.empty() ? "" : fAchievementName.c_str());
-		lua_setfield(luaStatePointer, -2, "achievementName");
-
-		lua_pushboolean(luaStatePointer, fAchieved ? 1 : 0);
-		lua_setfield(luaStatePointer, -2, "achieved");
-
-		lua_pushinteger(luaStatePointer, fImage);
-		lua_setfield(luaStatePointer, -2, "imageId");
-	}
-	return true;
-}
-
-
-
-//---------------------------------------------------------------------------------
-// DispatchAvatarImageLoaded Class Members
-//---------------------------------------------------------------------------------
-
-const char DispatchAvatarImageLoaded::kLuaEventName[] = "avatarFetched";
-
-DispatchAvatarImageLoaded::DispatchAvatarImageLoaded()
-:	fUserIntegerId(0)
-,	fImage(0)
-,	fSize(0)
-{
-}
-
-DispatchAvatarImageLoaded::~DispatchAvatarImageLoaded()
-{
-}
-
-void DispatchAvatarImageLoaded::AcquireEventDataFrom(const AvatarImageLoaded_t& steamEventData)
-{
-	fUserIntegerId = steamEventData.m_steamID.ConvertToUint64();
-	fImage = steamEventData.m_iImage;
-	fSize = steamEventData.m_iWide;
-}
-
-const char* DispatchAvatarImageLoaded::GetLuaEventName() const
-{
-	return kLuaEventName;
-}
-
-bool DispatchAvatarImageLoaded::PushLuaEventTableTo(lua_State* luaStatePointer) const
-{
-	// Validate.
-	if (!luaStatePointer)
-	{
-		return false;
-	}
-
-	// Push the event data to Lua.
-	CoronaLuaNewEvent(luaStatePointer, kLuaEventName);
-	{
-		std::stringstream stringStream;
-		stringStream.imbue(std::locale::classic());
-		stringStream << fUserIntegerId;
-		auto stringResult = stringStream.str();
-		lua_pushstring(luaStatePointer, stringResult.c_str());
-		lua_setfield(luaStatePointer, -2, "userSteamId");
-
-		lua_pushinteger(luaStatePointer, fImage);
-		lua_setfield(luaStatePointer, -2, "imageId");
-
-		lua_pushinteger(luaStatePointer, fSize);
-		lua_setfield(luaStatePointer, -2, "pixelSize");
 	}
 	return true;
 }

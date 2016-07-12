@@ -1,0 +1,28 @@
+settings =
+{
+	orientation =
+	{
+		default = "landscapeRight",
+		supported =
+		{
+			"landscapeLeft", "landscapeRight",
+		},
+	},
+	window =
+	{
+		minViewWidth = 960,
+		minViewHeight = 640,
+		suspendWhenMinimized = true,
+		titleText =
+		{
+			default = "Steam Achievement Test",
+		},
+	},
+	plugins =
+	{
+		["plugin.steamworks"] =
+		{
+			publisherId = "com.coronalabs",
+		}
+	},
+}

@@ -1,0 +1,31 @@
+settings =
+{
+	orientation =
+	{
+		default = "landscapeRight",
+		supported =
+		{
+			"landscapeLeft", "landscapeRight",
+		},
+	},
+	window =
+	{
+		viewWidth = 960,
+		viewHeight = 640,
+		minViewWidth = 960,
+		minViewHeight = 640,
+--		resizable = true,
+--		enableMaximizeButton = true,
+		titleText =
+		{
+			default = "Steam Leaderboard Test",
+		},
+	},
+	plugins =
+	{
+		["plugin.steamworks"] =
+		{
+			publisherId = "com.coronalabs",
+		},
+	},
+}

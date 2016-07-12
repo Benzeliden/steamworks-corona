@@ -9,7 +9,6 @@ application =
 		imageSuffix =
 		{
 			["@2x"] = 2,
-			["@4x"] = 4,
 		}
 	},
 	steamworks =

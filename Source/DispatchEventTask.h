@@ -211,7 +211,7 @@ class DispatchNumberOfCurrentPlayersEventTask : public BaseDispatchCallResultEve
 };
 
 
-/** Dispatches a Steam "PersonaStateChange_t" event and its data to Lua. */
+/** Dispatches a Steam "PersonaStateChange_t" or "AvatarImageLoaded_t" event and its data to Lua. */
 class DispatchPersonaStateChangedEventTask : public BaseDispatchEventTask
 {
 	public:
@@ -221,12 +221,35 @@ class DispatchPersonaStateChangedEventTask : public BaseDispatchEventTask
 		virtual ~DispatchPersonaStateChangedEventTask();
 
 		void AcquireEventDataFrom(const PersonaStateChange_t& steamEventData);
+		void AcquireEventDataFrom(const AvatarImageLoaded_t& steamEventData);
+		void SetHasLargeAvatarChanged(bool value);
 		virtual const char* GetLuaEventName() const;
 		virtual bool PushLuaEventTableTo(lua_State* luaStatePointer) const;
 
 	private:
 		uint64 fUserIntegerId;
 		int fFlags;
+		bool fHasLargeAvatarChanged;
+};
+
+
+/** Dispatches a Steam "UserAchievementIconFetched_t" event and its data to Lua. */
+class DispatchUserAchievementIconFetchedEventTask : public BaseDispatchEventTask
+{
+	public:
+		static const char kLuaEventName[];
+
+		DispatchUserAchievementIconFetchedEventTask();
+		virtual ~DispatchUserAchievementIconFetchedEventTask();
+
+		void AcquireEventDataFrom(const UserAchievementIconFetched_t& steamEventData);
+		virtual const char* GetLuaEventName() const;
+		virtual bool PushLuaEventTableTo(lua_State* luaStatePointer) const;
+
+	private:
+		std::string fAchievementName;
+		bool fIsUnlocked;
+		int fImageHandle;
 };
 
 
@@ -304,42 +327,4 @@ class DispatchUserStatsUnloadedEventTask : public BaseDispatchEventTask
 
 	private:
 		uint64 fUserIntegerId;
-};
-
-/** Dispatches a Steam "UserAchievementIconFetched_t" event and its data to Lua. */
-class DispatchAchievementIconFetched : public BaseDispatchEventTask
-{
-public:
-	static const char kLuaEventName[];
-
-	DispatchAchievementIconFetched();
-	virtual ~DispatchAchievementIconFetched();
-
-	void AcquireEventDataFrom(const UserAchievementIconFetched_t& steamEventData);
-	virtual const char* GetLuaEventName() const;
-	virtual bool PushLuaEventTableTo(lua_State* luaStatePointer) const;
-
-private:
-	std::string fAchievementName;
-	bool fAchieved;
-	int fImage;
-};
-
-/** Dispatches a Steam "AvatarImageLoaded_t" event and its data to Lua. */
-class DispatchAvatarImageLoaded : public BaseDispatchEventTask
-{
-public:
-	static const char kLuaEventName[];
-
-	DispatchAvatarImageLoaded();
-	virtual ~DispatchAvatarImageLoaded();
-
-	void AcquireEventDataFrom(const AvatarImageLoaded_t& steamEventData);
-	virtual const char* GetLuaEventName() const;
-	virtual bool PushLuaEventTableTo(lua_State* luaStatePointer) const;
-
-private:
-	uint64 fUserIntegerId;
-	int fImage;
-	int fSize;
 };
