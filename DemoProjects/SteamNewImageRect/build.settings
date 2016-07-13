@@ -10,9 +10,8 @@ settings =
 	},
 	window =
 	{
-		minViewWidth = 960,
-		minViewHeight = 640,
-		suspendWhenMinimized = true,
+		defaultViewWidth = 960,
+		defaultViewHeight = 640,
 		titleText =
 		{
 			default = "steamworks.newImageRect() Test",

@@ -978,7 +978,7 @@ int OnNewImageRect(lua_State* luaStatePointer)
 	int imageHandle = 0;
 	if (lua_type(luaStatePointer, luaArgumentIndex) == LUA_TNUMBER)
 	{
-		imageHandle = lua_tointeger(luaStatePointer, luaArgumentIndex);
+		imageHandle = (int)lua_tointeger(luaStatePointer, luaArgumentIndex);
 	}
 	else
 	{
@@ -1121,7 +1121,7 @@ int OnNewTexture(lua_State* luaStatePointer)
 	int imageHandle = 0;
 	if (lua_type(luaStatePointer, 1) == LUA_TNUMBER)
 	{
-		imageHandle = lua_tointeger(luaStatePointer, 1);
+		imageHandle = (int)lua_tointeger(luaStatePointer, 1);
 	}
 	else
 	{
@@ -1328,7 +1328,7 @@ int OnRequestLeaderboardEntries(lua_State* luaStatePointer)
 			const auto luaValueType = lua_type(luaStatePointer, -1);
 			if (luaValueType == LUA_TNUMBER)
 			{
-				rangeStartIndex = lua_tointeger(luaStatePointer, -1);
+				rangeStartIndex = (int)lua_tointeger(luaStatePointer, -1);
 				hasRangeStartIndex = true;
 			}
 			else if ((luaValueType != LUA_TNIL) && (luaValueType != LUA_TNONE))
@@ -1349,7 +1349,7 @@ int OnRequestLeaderboardEntries(lua_State* luaStatePointer)
 			const auto luaValueType = lua_type(luaStatePointer, -1);
 			if (luaValueType == LUA_TNUMBER)
 			{
-				rangeEndIndex = lua_tointeger(luaStatePointer, -1);
+				rangeEndIndex = (int)lua_tointeger(luaStatePointer, -1);
 				hasRangeEndIndex = true;
 			}
 			else if ((luaValueType != LUA_TNIL) && (luaValueType != LUA_TNONE))
@@ -1777,7 +1777,7 @@ int OnRequestSetHighScore(lua_State* luaStatePointer)
 		lua_getfield(luaStatePointer, 1, kValueFieldName);
 		if (lua_type(luaStatePointer, -1) == LUA_TNUMBER)
 		{
-			scoreValue = lua_tointeger(luaStatePointer, -1);
+			scoreValue = (int)lua_tointeger(luaStatePointer, -1);
 			hasValue = true;
 		}
 		else
@@ -2125,11 +2125,12 @@ int OnSetAchievementProgress(lua_State* luaStatePointer)
 		const auto luaArgumentType = lua_type(luaStatePointer, 2);
 		if (luaArgumentType == LUA_TNUMBER)
 		{
-			currentProgressValue = lua_tointeger(luaStatePointer, 2);
-			if (currentProgressValue < 0)
+			auto intValue = lua_tointeger(luaStatePointer, 2);
+			if (intValue < 0)
 			{
-				currentProgressValue = 0;
+				intValue = 0;
 			}
+            currentProgressValue = (uint32)intValue;
 		}
 		else if (luaArgumentType == LUA_TNONE)
 		{
@@ -2153,11 +2154,12 @@ int OnSetAchievementProgress(lua_State* luaStatePointer)
 		const auto luaArgumentType = lua_type(luaStatePointer, 3);
 		if (luaArgumentType == LUA_TNUMBER)
 		{
-			maxProgressValue = lua_tointeger(luaStatePointer, 3);
-			if (maxProgressValue < 0)
+			auto intValue = lua_tointeger(luaStatePointer, 3);
+			if (intValue < 0)
 			{
-				maxProgressValue = 0;
+				intValue = 0;
 			}
+            maxProgressValue = (uint32)intValue;
 		}
 		else if (luaArgumentType == LUA_TNONE)
 		{
@@ -2605,7 +2607,7 @@ int OnSetUserStatValues(lua_State* luaStatePointer)
 	{
 		// Push the next array element to the top of the stack.
 		// Note: Will be popped off by the for loop's increment section.
-		lua_rawgeti(luaStatePointer, 1, statIndex);
+		lua_rawgeti(luaStatePointer, 1, (int)statIndex);
 
 		// Ensure that the nxt array element is a table.
 		if (!lua_istable(luaStatePointer, -1))
@@ -2648,7 +2650,7 @@ int OnSetUserStatValues(lua_State* luaStatePointer)
 		}
 
 		// Fetch the element's stat value.
-		double floatValue;
+		double floatValue = 0;
 		{
 			bool hasValue = false;
 			const char kValueFieldName[] = "value";
@@ -2668,7 +2670,7 @@ int OnSetUserStatValues(lua_State* luaStatePointer)
 		}
 
 		// Fetch the element's session time, but only if updating an average rate stat.
-		double sessionTimeLength;
+		double sessionTimeLength = 0;
 		if (valueType == SteamStatValueType::kAverageRate)
 		{
 			bool hasValue = false;

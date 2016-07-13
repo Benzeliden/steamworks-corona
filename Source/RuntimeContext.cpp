@@ -183,7 +183,7 @@ RuntimeContext* RuntimeContext::GetInstanceBy(lua_State* luaStatePointer)
 
 int RuntimeContext::GetInstanceCount()
 {
-	return sRuntimeContextCollection.size();
+	return (int)sRuntimeContextCollection.size();
 }
 
 int RuntimeContext::OnCoronaEnterFrame(lua_State* luaStatePointer)

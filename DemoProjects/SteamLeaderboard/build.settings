@@ -10,12 +10,8 @@ settings =
 	},
 	window =
 	{
-		viewWidth = 960,
-		viewHeight = 640,
-		minViewWidth = 960,
-		minViewHeight = 640,
---		resizable = true,
---		enableMaximizeButton = true,
+		defaultViewWidth = 960,
+		defaultViewHeight = 640,
 		titleText =
 		{
 			default = "Steam Leaderboard Test",
