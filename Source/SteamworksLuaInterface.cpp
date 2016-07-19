@@ -3127,6 +3127,13 @@ CORONA_EXPORT int luaopen_plugin_steamworks(lua_State* luaStatePointer)
 		// - This app was launch via the Steam client, which happens with deployed Steam apps.
 		std::string currentStringId;
 		CopySteamAppIdTo(currentStringId);
+		if (currentStringId == "0")
+		{
+			// Ignore an app ID of zero, which is an invalid ID.
+			// This can happen when launching an app from the Steam client that was not installed by Steam.
+			// Steam also allows us to switch an app ID of zero to a working/real app ID, which we may do down below.
+			currentStringId.erase();
+		}
 
 		// Fetch the Steam app ID configured in the "config.lua" file.
 		std::string configStringId;
