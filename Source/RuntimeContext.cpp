@@ -210,9 +210,6 @@ int RuntimeContext::OnCoronaEnterFrame(lua_State* luaStatePointer)
 
 	// If Steam's overlay needs to be rendered, then force Corona to render the next frame.
 	// We need to do this because Steam renders its overlay by hooking into the OpenGL/Direct3D rendering process.
-	// Note: On Win32, this is needed because Corona only renders when display objects change as an optimization.
-	//       Not needed on OS X because Corona always renders after every "enterFrame" on that platform.
-#ifdef _WIN32
 	auto steamUtilsPointer = SteamUtils();
 	bool isSteamShowingOverlay = (steamUtilsPointer && steamUtilsPointer->BOverlayNeedsPresent());
 	if (isSteamShowingOverlay || fWasRenderRequested)
@@ -243,7 +240,6 @@ int RuntimeContext::OnCoronaEnterFrame(lua_State* luaStatePointer)
 		// This is needed to erase the last rendered frame of a Steam fade-out animation.
 		fWasRenderRequested = isSteamShowingOverlay;
 	}
-#endif
 
 	return 0;
 }
