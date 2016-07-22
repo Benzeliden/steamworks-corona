@@ -2945,11 +2945,12 @@ int OnAccessingField(lua_State* luaStatePointer)
 	{
 		// Push a boolean to Lua indicating if the Steam client is currently running
 		// and that the user is currently logged into it.
+		// Note: Do not call SteamUser()->BLoggedOn() since it returns false while in "offline mode".
 		bool isLoggedOn = false;
 		auto steamUserPointer = SteamUser();
 		if (steamUserPointer)
 		{
-			isLoggedOn = steamUserPointer->BLoggedOn();
+			isLoggedOn = steamUserPointer->GetSteamID().IsValid();
 		}
 		lua_pushboolean(luaStatePointer, isLoggedOn ? 1 : 0);
 		resultCount = 1;
