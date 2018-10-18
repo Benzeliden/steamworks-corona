@@ -2738,6 +2738,66 @@ int OnSetUserStatValues(lua_State* luaStatePointer)
 	return 1;
 }
 
+/** bool steamworks.isDlcInstalled([appId]) */
+int OnIsDlcInstalled(lua_State* luaStatePointer)
+{
+	// Validate.
+	if (!luaStatePointer)
+	{
+		return 0;
+	}
+
+	// Fetch the Steam object used to display the overlay.
+	// Will return false to Lua if not currently connected to Steam client.
+	auto steamApps = SteamApps();
+	if (!steamApps)
+	{
+		lua_pushboolean(luaStatePointer, 0);
+		return 1;
+	}
+
+	// Fetch the app ID string argument.
+	std::string stringId;
+	const auto luaArgumentType = lua_type(luaStatePointer, 1);
+	if (luaArgumentType == LUA_TSTRING)
+	{
+		auto stringArgument = lua_tostring(luaStatePointer, 1);
+		if (stringArgument)
+		{
+			stringId = stringArgument;
+		}
+	}
+	
+	if (stringId.empty())
+	{
+		CoronaLuaError(luaStatePointer, "Given AppId argument should be a string.");
+		lua_pushboolean(luaStatePointer, 0);
+		return 1;
+	}
+
+	// Convert the string ID to integer form.
+	AppId_t integerId = 0;
+	{
+		std::stringstream stringStream;
+		stringStream.imbue(std::locale::classic());
+		stringStream << stringId;
+		stringStream >> integerId;
+		if (stringStream.fail())
+		{
+			CoronaLuaError(
+				luaStatePointer, "Given string is an invalid app ID: '%s'", stringId.c_str());
+			lua_pushboolean(luaStatePointer, 0);
+			return 1;
+		}
+	}
+
+	bool result = steamApps->BIsDlcInstalled(integerId);
+
+	lua_pushboolean(luaStatePointer, result);
+	return 1;
+}
+
+
 /** arrayOfStrings steamworks.getAchievementNames() */
 int OnGetAchievementNames(lua_State* luaStatePointer)
 {
@@ -3074,6 +3134,7 @@ CORONA_EXPORT int luaopen_plugin_steamworks(lua_State* luaStatePointer)
 			{ "showStoreOverlay", OnShowStoreOverlay },
 			{ "showUserOverlay", OnShowUserOverlay },
 			{ "showWebOverlay", OnShowWebOverlay },
+			{ "isDlcInstalled", OnIsDlcInstalled },
 			{ "addEventListener", OnAddEventListener },
 			{ "removeEventListener", OnRemoveEventListener },
 			{ nullptr, nullptr }
